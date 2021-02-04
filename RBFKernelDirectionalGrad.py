@@ -36,17 +36,18 @@ class RBFKernelDirectionalGrad(RBFKernel):
             :attr:`ard_num_dims` and :attr:`batch_shape` arguments.
 
     Example:
-        >>> x = torch.randn(10, 5)
-        >>> # Non-batch: Simple option
-        >>> covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernelGrad())
-        >>> covar = covar_module(x)  # Output: LazyTensor of size (60 x 60), where 60 = n * (d + 1)
-        >>>
-        >>> batch_x = torch.randn(2, 10, 5)
-        >>> # Batch: Simple option
-        >>> covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernelGrad())
-        >>> # Batch: different lengthscale for each batch
-        >>> covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernelGrad(batch_shape=torch.Size([2])))
-        >>> covar = covar_module(x)  # Output: LazyTensor of size (2 x 60 x 60)
+        >>>>  # generate training data
+        >>>>  n   = 100
+        >>>>  dim = 4
+        >>>>  train_x = torch.rand(n,dim)
+        >>>>  # set directions
+        >>>>  n_directions = 2
+        >>>>  V = train_x[0:n_directions]        
+        >>>>  k = RBFKernelDirectionalGrad()
+        >>>>  params = {'V':V}
+        >>>>  K = k(train_x,diag=False,**params)
+        >>>>  print(K.detach().numpy())
+
     """
 
     def forward(self, x1, x2, diag=False, **params):
@@ -58,6 +59,9 @@ class RBFKernelDirectionalGrad(RBFKernel):
         V  = params['V']
         n_dir = V.shape[-2] # number of directions
         self.n_dir = n_dir
+        # normalize directions
+        V = (V.T/torch.norm(V,dim=1)).T
+
 
         # n1*(dim+1) x n2*(dim+1)
         K = torch.zeros(*batch_shape, n1 * (n_dir+ 1), n2 * (n_dir+ 1), device=x1.device, dtype=x1.dtype)
@@ -114,7 +118,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
             if not (n1 == n2 and torch.eq(x1, x2).all()):
                 raise RuntimeError("diag=True only works when x1 == x2")
 
-            kernel_diag = super(RBFKernelGrad, self).forward(x1, x2, diag=True)
+            kernel_diag = super(RBFKernelDirectionalGrad, self).forward(x1, x2, diag=True)
             grad_diag = torch.ones(*batch_shape, n2, n_dir, device=x1.device, dtype=x1.dtype) / self.lengthscale.pow(2)
             grad_diag = grad_diag.transpose(-1, -2).reshape(*batch_shape, n2 * n_dir)
             k_diag = torch.cat((kernel_diag, grad_diag), dim=-1)
@@ -136,5 +140,6 @@ if __name__ == '__main__':
 
   k = RBFKernelDirectionalGrad()
   params = {'V':V}
-  K = k(train_x,**params)
+  K = k(train_x,diag=False,**params)
   print(K.detach().numpy())
+
