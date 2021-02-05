@@ -145,8 +145,8 @@ if __name__ == '__main__':
   # number of inducing points
   num_inducing = 20
   # set directions
-  n_directions = 2
-  V = train_x[0:n_directions]
+  n_directions = 4
+  V = torch.eye(dim)[:n_directions]
 
   k = RBFKernelDirectionalGrad()
   # must set number of directions
@@ -156,3 +156,13 @@ if __name__ == '__main__':
   K = k(train_x,diag=False,**params)
   print(K.detach().numpy())
 
+  # if n_directions == dim
+  # and directions are canonical basis
+  # we can check answer with RBFKernelGrad
+  # from gpytorch.kernels import RBFKernelGrad
+  # kk = RBFKernelGrad()
+  # KK = kk(train_x)
+  # # print(KK.detach().numpy())
+  # diff = KK.detach().numpy()-K.detach().numpy()
+  # print(diff.max())
+  # print(diff.min())
