@@ -5,41 +5,49 @@ import gpytorch
 import tqdm
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
+from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 
 
 
 class MultitaskGPModel(gpytorch.models.ApproximateGP):
-    def __init__(self,num_tasks,num_latents,num_inducing,num_directions,dim):
+    def __init__(self,num_inducing,num_directions,dim):
+
+        self.num_directions = num_directions
+        self.num_inducing = num_inducing
         # Let's use a different set of inducing points for each latent function
         inducing_points     = torch.rand(num_inducing, dim)
-        inducing_directions = torch.rand(num_directions, dim)
+        inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
         num_directional_derivs = num_directions*num_inducing
 
-        # register the directions
-        self.register_parameter(name="inducing_directions", parameter=torch.nn.Parameter(inducing_directions))
-
         # variational distribution q(u,g)
+        # use batch so we learn a variational distribution for each task
         variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
-            num_inducing+num_directional_derivs)
+            num_inducing+num_directional_derivs,batch_shape=torch.Size([inducing_directions+1]))
         # variational strategy q(f)
+        # TODO: 
+        # - wrap with multioutput (see example)
         variational_strategy = gpytorch.variational.VariationalStrategy(
                 self, inducing_points, variational_distribution, learn_inducing_locations=True)
         super().__init__(variational_strategy)
 
-        self.mean_module = gpytorch.means.ConstantMean()
         # TODO: 
-        # - write directional grad kernel
-        self.covar_module = gpytorch.kernels.ScaleKernel(
-            gpytorch.kernels.RBFKernel(batch_shape=torch.Size([num_latents])),
-            batch_shape=torch.Size([num_latents])
-        )
+        # - mark the mean and covariance as batch (see example)
+        self.mean_module = gpytorch.means.ConstantMean()
+        self.covar_module = gpytorch.kernels.ScaleKernel(RBFKernelDirectionalGrad(num_directions))
+        # set the number of directions
+        self.covar_module.base_kernel.set_n_dir(num_directions)
+
+        # register the directions
+        self.register_parameter(name="inducing_directions", parameter=torch.nn.Parameter(inducing_directions))
+
 
 
     def forward(self, x):
+
         # pass in params
         params = {}
-        params['num_directions'] = self.num_directions
-        params['V'] = self.inducing_directions
+        params['V']  =  self.inducing_directions.data
+        params['num_inducing'] = self.num_inducing
 
         mean_x  = self.mean_module(x)
         covar_x = self.covar_module(x, **params)
@@ -67,14 +75,16 @@ def train_gp(train_x,train_y,num_inducing=128,
   
   dim = train_x.size(-1)
 
-  # GP model with 1 task and dim+1 latents
-  model = MultitaskGPModel(num_tasks,num_latents,num_inducing,num_directions,dim)
-  # gaussian likelihood with 1 task
-  likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=num_tasks)
+  # Multitask GP model
+  model = MultitaskGPModel(num_inducing,num_directions,dim)
+  # gaussian likelihood 
+  likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_directions+1)
 
   model.train()
   likelihood.train()
 
+  # TODO:
+  # - find out if the hyperparameters are passed through the kernel to here
   optimizer = torch.optim.Adam([
       {'params': model.parameters()},
       {'params': likelihood.parameters()},
@@ -100,6 +110,11 @@ def train_gp(train_x,train_y,num_inducing=128,
       # y_batch = y_batch[:,idx_contig]
 
       optimizer.zero_grad()
+
+      # TODO:
+      # - pass the right output to the mll so that expected_log_prob is computed
+      #   correctly. This might mean computing a different mean and kernel matrix
+      #   than what model returns
       output = model(train_x)
       # evaluate loss
       loss = -mll(output, train_y)
@@ -117,9 +132,9 @@ if __name__ == "__main__":
   
   # generate training data
   n   = 100
-  dim = 1
-  # train_x = torch.rand(n,dim)
-  train_x = torch.linspace(0, 2*math.pi, n).reshape(n,dim)
+  dim = 2
+  train_x = torch.rand(n,dim)
+  # train_x = torch.linspace(0, 2*math.pi, n).reshape(n,dim)
 
   # [f(x) df/dx df/dy]
   # train_y = torch.stack([torch.sin(train_x[:,0] + train_x[:,1]),
@@ -130,10 +145,8 @@ if __name__ == "__main__":
       torch.cos(train_x[:,0]),
   ], -1)
   
-  num_latents = dim+1
-  num_tasks = 1
   num_inducing = 20
-  num_directions = 1
+  num_directions = dim
   num_epochs = 50
 
   # train
