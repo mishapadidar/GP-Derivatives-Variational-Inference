@@ -26,7 +26,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
         :attr:`lengthscale_prior` (Prior, optional):
             Set this if you want to apply a prior to the lengthscale parameter.  Default: `None`.
         :attr:`lengthscale_constraint` (Constraint, optional):
-            Set this if you want to apply a constraint to the lengthscale parameter. Default: `Positive`.
+            Set this ifa you want to apply a constraint to the lengthscale parameter. Default: `Positive`.
         :attr:`eps` (float):
             The minimum value that the lengthscale can take (prevents divide by zero errors). Default: `1e-6`.
 
@@ -40,11 +40,15 @@ class RBFKernelDirectionalGrad(RBFKernel):
         >>>>  n   = 100
         >>>>  dim = 4
         >>>>  train_x = torch.rand(n,dim)
+        >>>>  # number of inducing points
+        >>>>  num_inducing = 20
         >>>>  # set directions
         >>>>  n_directions = 2
-        >>>>  V = train_x[0:n_directions]        
+        >>>>  V = train_x[0:n_directions]      
         >>>>  k = RBFKernelDirectionalGrad()
-        >>>>  params = {'V':V}
+        >>>>  # must set number of directions
+        >>>>  k.set_n_dir(n_directions)      
+        >>>>  params = {'V':V,'num_inducing':num_inducing}
         >>>>  K = k(train_x,diag=False,**params)
         >>>>  print(K.detach().numpy())
 
@@ -58,7 +62,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
         # directions
         V  = params['V']
         n_dir = V.shape[-2] # number of directions
-        self.n_dir = n_dir
+        assert self.n_dir == n_dir, "V.shape[-2] != self.n_dir"
         # normalize directions
         V = (V.T/torch.norm(V,dim=1)).T
 
@@ -128,18 +132,27 @@ class RBFKernelDirectionalGrad(RBFKernel):
     def num_outputs_per_input(self, x1, x2):
         return self.n_dir + 1
 
+    def set_n_dir(self,n_dir):
+      self.n_dir = n_dir
+
+
 if __name__ == '__main__':
   
   # generate training data
   n   = 100
   dim = 4
   train_x = torch.rand(n,dim)
+  # number of inducing points
+  num_inducing = 20
   # set directions
   n_directions = 2
   V = train_x[0:n_directions]
 
   k = RBFKernelDirectionalGrad()
-  params = {'V':V}
+  # must set number of directions
+  k.set_n_dir(n_directions)
+
+  params = {'V':V,'num_inducing':num_inducing}
   K = k(train_x,diag=False,**params)
   print(K.detach().numpy())
 
