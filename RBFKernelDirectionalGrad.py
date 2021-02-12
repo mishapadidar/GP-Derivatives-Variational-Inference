@@ -74,7 +74,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
 
         # n1*(dim+1) x n2*(dim+1)
-        K = torch.zeros(*batch_shape, n1 * (n_dir1+ 1), n2 * (n_dir2+ 1), device=x1.device, dtype=x1.dtype)
+        K = torch.zeros(n1 * (n_dir1+ 1), n2 * (n_dir2+ 1), device=x1.device, dtype=x1.dtype)
 
         if not diag:
             # Scale the inputs by the lengthscale (for stability)
@@ -87,48 +87,34 @@ class RBFKernelDirectionalGrad(RBFKernel):
             x2_v1 = x2_ @ v1.T
             x2_v2 = x2_ @ v2.T
 
-            # TODO:
-            # the outer for each block is different
-            # and depends on which set of directions
-            # use the appropriate xi_vj
-            #
-            # Form all possible rank-1 products for the gradient and Hessian blocks
-            outer = x1_v.view(*batch_shape, n1, 1, n_dir1) - x2_v.view(*batch_shape, 1, n2, n_dir2)
-            outer = outer / self.lengthscale.unsqueeze(-2)
-            outer = torch.transpose(outer, -1, -2).contiguous()
-
             # 1) Kernel block
             diff = self.covar_dist(x1_, x2_, square_dist=True, dist_postprocess_func=postprocess_rbf, **params)
             K_11 = diff
-            K[..., :n1, :n2] = K_11
+            K[:n1, :n2] = K_11
 
-            # TODO:
-            # use directions for x2 to compute this block
-            # 
-            # 2) First gradient block # (n1 x n2*n_dir)
-            outer1 = outer.view(*batch_shape, n1, n2 * n_dir1)
-            K[..., :n1, n2:] = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), n_dir])
+            # 2) First gradient block # (n1 x n2*n_dir2)
+            # Form all possible rank-1 products for the gradient block
+            outer = x1_v2.unsqueeze(1) - x2_v2
+            # reshape to (n1 x n2*n_dir2) matrix
+            outer = outer.view(n1,n2*n_dir2)
+            # repeat_interleave row entries of the (n1 x n2) K_11 matrix  n_dir2 times
+            K[:n1, n2:] = outer*K_11.repeat_interleave(n_dir2,1)
 
-            # TODO:
-            # use directions for x1 to compute this block
-            # 
-            # 3) Second gradient block
-            outer2 = outer.transpose(-1, -3).reshape(*batch_shape, n2, n1 * n_dir)
-            outer2 = outer2.transpose(-1, -2)
-            K[..., n1:, :n2] = -outer2 * K_11.repeat([*([1] * n_batch_dims), n_dir, 1])
+
+            # 3) Second gradient block # (n1*n_dir1 x n2)
+            outer2 = x1_v1.unsqueeze(1) - x2_v1
+            # reshape to (n1 x n2*n_dir2) matrix
+            outer2 = outer.view(n1,n2*n_dir2)
+            # repeat_interleave row entries of the (n1 x n2) K_11 matrix  n_dir2 times
+            K[n1:, :n2] = -outer2 *K_11.repeat_interleave(n_dir2,1)
 
 
             # TODO:
             # use directions for both x1 and x2 to compute this block
             # 
-            # 4) Hessian block
-            outer3 = outer1.repeat([*([1] * n_batch_dims), n_dir, 1]) * outer2.repeat([*([1] * (n_batch_dims + 1)), n_dir])
-            kp = KroneckerProductLazyTensor(
-                torch.eye(n_dir, n_dir, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1) / self.lengthscale.pow(2),
-                torch.ones(n1, n2, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1),
-            )
-            chain_rule = kp.evaluate() - outer3
-            K[..., n1:, n2:] = chain_rule * K_11.repeat([*([1] * n_batch_dims), n_dir, n_dir])
+            # 4) Hessian block # (n1*n_dir1 x n2In_dir2)
+            
+            K[n1:, n2:] =
             
             # Symmetrize for stability
             if n1 == n2 and torch.eq(x1, x2).all():
@@ -147,11 +133,6 @@ class RBFKernelDirectionalGrad(RBFKernel):
             return k_diag
 
 
-    # TODO:
-    # what is the number of outputs per input
-    def num_outputs_per_input(self, x1, x2):
-        return #self.n_dir + 1
-
 
 
 if __name__ == '__main__':
@@ -164,14 +145,14 @@ if __name__ == '__main__':
   num_inducing = 20
   # set directions
   n_directions = 4
-  V = torch.eye(dim)[:n_directions]
+  v1 = torch.eye(dim)[:n_directions]
+  v2 = v1
 
   k = RBFKernelDirectionalGrad()
   # must set number of directions
   k.set_n_dir(n_directions)
 
-  params = {'V':V,'num_inducing':num_inducing}
-  K = k(train_x,diag=False,**params)
+  K = k(train_x,train_x,v1,v2,diag=False)
   print(K.detach().numpy())
 
   # if n_directions == dim
