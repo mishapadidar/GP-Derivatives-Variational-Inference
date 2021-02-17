@@ -113,11 +113,11 @@ def train_gp(train_x,train_y,num_inducing=128,
   train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
 
   # train
-  epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
+  epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
   for i in epochs_iter:
 
     # iterator for minibatches
-    minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
+    minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
 
     # loop through minibatches
     for x_batch, y_batch in minibatch_iter:
@@ -128,13 +128,11 @@ def train_gp(train_x,train_y,num_inducing=128,
       kwargs['derivative_directions'] = derivative_directions
 
       # pass in interleaved data... so kernel should also interleave
-      y_batch = y_batch.reshape(minibatch_size*(minibatch_dim+1))
+      y_batch = y_batch.reshape(torch.numel(y_batch))
       # x_batch = x_batch.repeat_interleave(minibatch_dim+1,dim=0)
 
       optimizer.zero_grad()
       output = model(x_batch,**kwargs)
-      print(output)
-      quit()
       loss   = -mll(output, y_batch)
       epochs_iter.set_postfix(loss=loss.item())
       loss.backward()
@@ -151,26 +149,44 @@ if __name__ == "__main__":
   torch.random.manual_seed(0)
   # generate training data
   n   = 100
-  dim = 2
-  train_x = torch.rand(n,dim)
+  dim = 1
+  # train_x = torch.rand(n,dim)
   # f(x) = sin(x+y), df/dx = cos(x+y), df/dy = cos(x+y)
-  train_y = torch.stack([torch.sin(train_x[:,0]+train_x[:,1]),
-    torch.cos(train_x[:,0]+train_x[:,1]),torch.cos(train_x[:,0]+train_x[:,1])], -1)
-  
+  # train_y = torch.stack([torch.sin(train_x[:,0]+train_x[:,1]),
+  #   torch.cos(train_x[:,0]+train_x[:,1]),torch.cos(train_x[:,0]+train_x[:,1])], -1)
+  train_x = torch.linspace(0,2*np.pi,n).reshape(n,dim)
+  train_y = torch.stack([torch.sin(train_x[:,0]),
+    torch.cos(train_x[:,0])], -1)
 
+  num_directions = dim
   # train
   model,likelihood = train_gp(
                         train_x,
                         train_y,
-                        num_inducing=20,
-                        num_directions=dim,
-                        minibatch_size = 7,
-                        minibatch_dim = dim,
-                        num_epochs = 50
+                        num_inducing=n,
+                        num_directions=num_directions,
+                        minibatch_size = 50,
+                        minibatch_dim = num_directions,
+                        num_epochs = 150
                         )
 
   # Set into eval mode
   model.eval()
   likelihood.eval()
 
+  # predict
+  kwargs = {}
+  kwargs['derivative_directions'] = torch.eye(dim)
+  preds   = model(train_x, **kwargs).mean.cpu()
+  pred_f  = preds[::dim+1]
+  pred_df = preds[1::dim+1]
   
+  import matplotlib.pyplot as plt
+  plt.plot(train_x.flatten(),train_y.flatten()[::dim+1],'r-',linewidth=2,label='true f(x)')
+  plt.plot(train_x.flatten(),pred_f.detach().numpy(),'b-',linewidth=2,label='variational f(x)')
+  plt.plot(train_x.flatten(),train_y.flatten()[1::dim+1],'r--',linewidth=2,label='true df/dx')
+  plt.plot(train_x.flatten(),pred_df.detach().numpy(),'b--',linewidth=2,label='variational df/dx')
+  plt.legend()
+  plt.tight_layout()
+  plt.title("Variational GP Predictions with Learned Derivatives")
+  plt.show()

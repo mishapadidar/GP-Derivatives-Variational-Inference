@@ -92,19 +92,19 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         # get the inducing directions
         inducing_directions =self.inducing_directions.data
 
-        if self.model.training:
-          # use the derivative directions in training mode
-          derivative_directions = kwargs['derivative_directions']
-        else:
-          # in eval mode use inducing directions
-          derivative_directions = inducing_directions
+        # if self.model.training:
+        #   # use the derivative directions in training mode
+        derivative_directions = kwargs['derivative_directions']
+        # else:
+        #   # in eval mode use inducing directions
+        #   derivative_directions = inducing_directions
 
         num_induc = inducing_points.size(-2)
         num_directions = inducing_directions.size(-2)
         num_data = x.size(-2)
         num_derivative_directions = derivative_directions.size(-2)
 
-        assert num_derivative_directions == num_directions, "Kernel cannot predict with different number of directions"
+        assert num_derivative_directions == num_directions, "Need minibatch size to be same as number of directions for kernel"
 
         # TODO (future)
         # - figure out how to avoid setting num directions
@@ -127,7 +127,6 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         data_induc_covar = full_covar[...,-num_data*(num_derivative_directions+1):,:num_induc*(num_directions+1)].evaluate()
         # predicts mean for each output
         test_mean = self.model.mean_module(x.repeat_interleave(num_derivative_directions+1,dim=0))  
-
 
         kwargs['v1'] = derivative_directions
         kwargs['v2'] = derivative_directions
