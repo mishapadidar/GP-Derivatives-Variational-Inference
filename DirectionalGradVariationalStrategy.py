@@ -89,36 +89,59 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
     def forward(self, x, inducing_points, inducing_values,variational_inducing_covar=None, **kwargs):
         # Compute full prior distribution
 
-        # TODO
-        # - how should we pass in the inducing directions?
-        # - decide how we want to pass in (or omit) derivative directions.
-        #   For training we need the derivative directions but for inference we don't, we
-        #   just use the inducing directions... i think. 
-        #   We could use the boolean model.training to determine if we are in 
-        #   training or eval mode before we set the directions for kernel computations
+        # get the inducing directions
+        inducing_directions =self.inducing_directions.data
 
-        derivative_directions = kwargs['derivative_directions']
-        v1 = torch.cat([self.inducing_directions.data,derivative_directions])
-        v2 = v1
-        kwargs['v1'] = v1
-        kwargs['v2'] = v2
-        full_inputs = torch.cat([inducing_points, x], dim=-2)
-        # TODO:
-        # - looks like we need to set the kernel num_outputs_per_input before
-        #   computing the full_output
-        full_output = self.model.forward(full_inputs, **kwargs)
-        full_covar = full_output.lazy_covariance_matrix
+        if self.model.training:
+          # use the derivative directions in training mode
+          derivative_directions = kwargs['derivative_directions']
+        else:
+          # in eval mode use inducing directions
+          derivative_directions = inducing_directions
 
-        # TODO
-        # -get the correct covariance terms
-        #  i think the current setup does not work with our covariance matrix.
-        # Covariance terms
         num_induc = inducing_points.size(-2)
-        test_mean = full_output.mean[..., num_induc:]
-        induc_induc_covar = full_covar[..., :num_induc, :num_induc].add_jitter()
-        induc_data_covar = full_covar[..., :num_induc, num_induc:].evaluate()
-        data_data_covar = full_covar[..., num_induc:, num_induc:]
+        num_directions = inducing_directions.size(-2)
+        num_data = x.size(-2)
+        num_derivative_directions = derivative_directions.size(-2)
 
+        assert num_derivative_directions == num_directions, "Kernel cannot predict with different number of directions"
+
+        # TODO (future)
+        # - figure out how to avoid setting num directions
+        #
+        # set the number of outputs per input.
+
+        # Covariance terms
+        kwargs['v1'] = inducing_directions
+        kwargs['v2'] = inducing_directions
+        self.model.covar_module.base_kernel.set_num_directions(num_directions)
+        induc_induc_covar = self.model.forward(inducing_points, **kwargs).lazy_covariance_matrix.add_jitter()
+        
+        kwargs['v1'] = inducing_directions
+        kwargs['v2'] = derivative_directions
+        full_inputs   = torch.cat([inducing_points,x],dim=-2)
+        self.model.covar_module.base_kernel.set_num_directions(num_directions)
+        full_output = self.model.forward(full_inputs, **kwargs)
+        full_covar  = full_output.lazy_covariance_matrix
+        induc_data_covar = full_covar[...,:num_induc*(num_directions+1),-num_data*(num_derivative_directions+1):].evaluate()
+        data_induc_covar = full_covar[...,-num_data*(num_derivative_directions+1):,:num_induc*(num_directions+1)].evaluate()
+        # predicts mean for each output
+        test_mean = self.model.mean_module(x.repeat_interleave(num_derivative_directions+1,dim=0))  
+
+
+        kwargs['v1'] = derivative_directions
+        kwargs['v2'] = derivative_directions
+        self.model.covar_module.base_kernel.set_num_directions(num_derivative_directions)
+        data_data_covar = self.model.forward(x, **kwargs).lazy_covariance_matrix
+
+        # Covariance terms
+        # num_induc = inducing_points.size(-2)
+        # num_directions = inducing_directions.size(-2)
+        # test_mean = full_output.mean[..., num_induc*(num_directions+1):]
+        # induc_induc_covar = full_covar[..., :num_induc*(num_directions+1), :num_induc*(num_directions+1)].add_jitter()
+        # induc_data_covar = full_covar[..., :num_induc*(num_directions+1), num_induc*(num_directions+1):].evaluate()
+        # data_data_covar = full_covar[..., num_induc*(num_directions+1):, num_induc*(num_directions+1):]
+        
         # Compute interpolation terms
         # K_ZZ^{-1/2} K_ZX
         # K_ZZ^{-1/2} \mu_Z
@@ -132,10 +155,13 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
                 pass
             L = self._cholesky_factor(induc_induc_covar)
         interp_term = L.inv_matmul(induc_data_covar.double()).to(full_inputs.dtype)
+        # term K_ZZ^{-1/2} K_XZ^T 
+        interp_term_trans = L.inv_matmul(data_induc_covar.transpose(-1,-2).double()).to(full_inputs.dtype)
 
         # Compute the mean of q(f)
         # k_XZ K_ZZ^{-1/2} (m - K_ZZ^{-1/2} \mu_Z) + \mu_X
-        predictive_mean = (interp_term.transpose(-1, -2) @ inducing_values.unsqueeze(-1)).squeeze(-1) + test_mean
+        # predictive_mean = (interp_term.transpose(-1, -2) @ inducing_values.unsqueeze(-1)).squeeze(-1) + test_mean
+        predictive_mean = (interp_term_trans.transpose(-1, -2) @ inducing_values.unsqueeze(-1)).squeeze(-1) + test_mean
 
         # Compute the covariance of q(f)
         # K_XX + k_XZ K_ZZ^{-1/2} (S - I) K_ZZ^{-1/2} k_ZX
@@ -146,12 +172,12 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         if trace_mode.on():
             predictive_covar = (
                 data_data_covar.add_jitter(1e-4).evaluate()
-                + interp_term.transpose(-1, -2) @ middle_term.evaluate() @ interp_term
+                + interp_term_trans.transpose(-1, -2) @ middle_term.evaluate() @ interp_term
             )
         else:
             predictive_covar = SumLazyTensor(
                 data_data_covar.add_jitter(1e-4),
-                MatmulLazyTensor(interp_term.transpose(-1, -2), middle_term @ interp_term),
+                MatmulLazyTensor(interp_term_trans.transpose(-1, -2), middle_term @ interp_term),
             )
 
         # Return the distribution

@@ -43,7 +43,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
         n_dir2 = v2.shape[-2]
         assert n_dir1 == n_dir2, "v1 and v2 must contain same number of directions"
 
-        self.set_num_outputs_per_input(x1,x2,v1,v2)
+        self.set_num_directions(n_dir1)
         # normalize directions
         v1 = (v1.T/torch.norm(v1,dim=1)).T
         v2 = (v2.T/torch.norm(v2,dim=1)).T
@@ -104,13 +104,14 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
 
             # Symmetrize for stability
-            # if n1 == n2 and torch.eq(x1, x2).all():
-            #     K = 0.5 * (K.transpose(-1, -2) + K)
+            # in general this should be off... but okay as long as v1 == v2
+            if n1 == n2 and torch.eq(x1, x2).all():
+                K = 0.5 * (K.transpose(-1, -2) + K)
 
             # Apply a perfect shuffle permutation to match the MutiTask ordering
-            # pi1 = torch.arange(n1 * (d + 1)).view(d + 1, n1).t().reshape((n1 * (d + 1)))
-            # pi2 = torch.arange(n2 * (d + 1)).view(d + 1, n2).t().reshape((n2 * (d + 1)))
-            # K = K[..., pi1, :][..., :, pi2]
+            pi1 = torch.arange(n1 * (n_dir1 + 1)).view(n_dir1 + 1, n1).t().reshape((n1 * (n_dir1 + 1)))
+            pi2 = torch.arange(n2 * (n_dir2 + 1)).view(n_dir2 + 1, n2).t().reshape((n2 * (n_dir2 + 1)))
+            K = K[..., pi1, :][..., :, pi2]
             return K
 
         else:
@@ -121,15 +122,15 @@ class RBFKernelDirectionalGrad(RBFKernel):
             grad_diag = torch.ones(*batch_shape, n2, d, device=x1.device, dtype=x1.dtype) / self.lengthscale.pow(2)
             grad_diag = grad_diag.transpose(-1, -2).reshape(*batch_shape, n2 * d)
             k_diag = torch.cat((kernel_diag, grad_diag), dim=-1)
-            # pi = torch.arange(n2 * (d + 1)).view(d + 1, n2).t().reshape((n2 * (d + 1)))
-            return k_diag
+            pi = torch.arange(n2 * (d + 1)).view(d + 1, n2).t().reshape((n2 * (d + 1)))
+            return k_diag[..., pi]
 
-    def set_num_outputs_per_input(self,x1,x2,v1,v2):
-        self.n_dir1 = v1.shape[-2]
+    def set_num_directions(self,num_directions):
+        self.n_dir1 = num_directions
 
     def num_outputs_per_input(self, x1, x2):
-
         return self.n_dir1 +1
+
 
 
 if __name__ == '__main__':
@@ -141,10 +142,16 @@ if __name__ == '__main__':
   train_x = torch.rand(n1,dim)
   train_x2 = torch.randn(n2,dim)
   # set directions
-  n_directions = 3
+  n_directions = 4
   v1 = torch.eye(dim)[:n_directions]
   v2 = torch.eye(dim)[:n_directions]
   k = RBFKernelDirectionalGrad()
   params = {'v1':v1,'v2':v2}
   K = k(train_x,train_x, **params)
   print(K.detach().numpy().shape)
+
+  # verify against RBFKernelGrad
+  # from gpytorch.kernels import RBFKernelGrad
+  # kk = RBFKernelGrad()
+  # KK = kk(train_x,train_x)
+  # print(KK.detach().numpy() - K.detach().numpy())

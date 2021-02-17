@@ -12,19 +12,19 @@ from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrateg
 """Notes from Jake
 [x] we will pass in mini-batches of data stochastically with a fixed size of observations,
   i.e. function values plus fixed number of derivatives
-[] when passing in training data we should pass in X,[fX,df/dW],W where W is the set
+[x] when passing in training data we should pass in X,[fX,df/dW],W where W is the set
   of canonical directions that the mini-batch of derivatives df/dW are taken in.
 [x] upon taking block of observations we should reshape observations as a giant vector
   so that [fX,df/dW] is a giant vector. This means we should repeat the X values so that 
   the vector of observations is the same number of entries as X. 
-[] The kernel K_{XZ} computes the kernel at the points X and Z in the directions U and V. 
+[x] The kernel K_{XZ} computes the kernel at the points X and Z in the directions U and V. 
   When X is training points the directions are W, the canonical directions that match up
   with the derivative directions of the mini-batch. The directions V are the inducing directions. 
   We must rewrite the kernel to require two sets of points and two sets of directions.
 [] q(f) should be a vector of same size as the number of observations. We should edit the
   base variational strategy so that we can pass in kernel directions. I beleive that we can
   do this through kwargs.
-[] make sure to only return the diagonal of q(f)
+[] make sure to only return the diagonal of the predictive covariance q(f)
 [x] One big takeaway is that their is no multitasking at all!"""
 
 """Future Upgrades
@@ -52,6 +52,7 @@ class GPModel(gpytorch.models.ApproximateGP):
         # set the mean and covariance
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(RBFKernelDirectionalGrad())
+        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernelGrad())
 
 
     def forward(self, x, **params):
@@ -126,11 +127,9 @@ def train_gp(train_x,train_y,num_inducing=128,
       kwargs = {}
       kwargs['derivative_directions'] = derivative_directions
 
-      # flatten function and derivatives
-      # [function values, derivative entry 1, derivative entry 2,...]
-      y_batch = torch.reshape(y_batch.T,(minibatch_size*(minibatch_dim+1),1))
-      # repeat x values to match new y_batch shape
-      x_batch = x_batch.repeat(minibatch_dim+1,1)
+      # pass in interleaved data... so kernel should also interleave
+      y_batch = y_batch.reshape(minibatch_size*(minibatch_dim+1))
+      # x_batch = x_batch.repeat_interleave(minibatch_dim+1,dim=0)
 
       optimizer.zero_grad()
       output = model(x_batch,**kwargs)
@@ -149,6 +148,7 @@ def train_gp(train_x,train_y,num_inducing=128,
 
 if __name__ == "__main__":
   
+  torch.random.manual_seed(0)
   # generate training data
   n   = 100
   dim = 2
