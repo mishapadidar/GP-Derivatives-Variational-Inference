@@ -121,8 +121,21 @@ class RBFKernelDirectionalGrad(RBFKernel):
             # pi = torch.arange(n2 * (d + 1)).view(d + 1, n2).t().reshape((n2 * (d + 1)))
             return k_diag
 
-    # def num_outputs_per_input(self, x1, x2):
-    #     return x1.size(-1) + 1
+    def set_num_outputs_per_input(self,x1,x2,v1,v2):
+        self.n_dir1 = v1.shape[-2]
+        self.n_dir2 = v2.shape[-2]
+
+    def num_outputs_per_input(self, x1, x2):
+
+        # TODO:
+        # - this part is preventing the kernel from working
+        #   we must return an int j here such that the kernel
+        #   matrix is size (n1 *j) x (n2 * j).
+        #   In our case the matrix size is dependent on v1 and 
+        #   v2, and in the case that the size of v1 is not the
+        #   same as the size of v2 there is no j that makes this
+        #   work.
+        return x1.size(-1)+1
 
 
 if __name__ == '__main__':
@@ -132,13 +145,13 @@ if __name__ == '__main__':
   n2   = 100
   dim = 4
   train_x = torch.rand(n1,dim)
-  train_x2 = train_x #torch.randn(n2,dim)
+  train_x2 = torch.randn(n2,dim)
   # number of inducing points
   num_inducing = 20
   # set directions
   n_directions = 4
   v1 = torch.eye(dim)[:n_directions]
-  v2 = torch.eye(dim)[:3]
+  v2 = torch.eye(dim)[:n_directions]
   k = RBFKernelDirectionalGrad()
   params = {'v1':v1,'v2':v2}
   K = k(train_x,train_x, **params)
