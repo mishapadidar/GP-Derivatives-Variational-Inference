@@ -41,6 +41,9 @@ class RBFKernelDirectionalGrad(RBFKernel):
         v2 = params['v2']
         n_dir1 = v1.shape[-2]
         n_dir2 = v2.shape[-2]
+        assert n_dir1 == n_dir2, "v1 and v2 must contain same number of directions"
+
+        self.set_num_outputs_per_input(x1,x2,v1,v2)
         # normalize directions
         v1 = (v1.T/torch.norm(v1,dim=1)).T
         v2 = (v2.T/torch.norm(v2,dim=1)).T
@@ -123,19 +126,10 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
     def set_num_outputs_per_input(self,x1,x2,v1,v2):
         self.n_dir1 = v1.shape[-2]
-        self.n_dir2 = v2.shape[-2]
 
     def num_outputs_per_input(self, x1, x2):
 
-        # TODO:
-        # - this part is preventing the kernel from working
-        #   we must return an int j here such that the kernel
-        #   matrix is size (n1 *j) x (n2 * j).
-        #   In our case the matrix size is dependent on v1 and 
-        #   v2, and in the case that the size of v1 is not the
-        #   same as the size of v2 there is no j that makes this
-        #   work.
-        return x1.size(-1)+1
+        return self.n_dir1 +1
 
 
 if __name__ == '__main__':
@@ -146,13 +140,11 @@ if __name__ == '__main__':
   dim = 4
   train_x = torch.rand(n1,dim)
   train_x2 = torch.randn(n2,dim)
-  # number of inducing points
-  num_inducing = 20
   # set directions
-  n_directions = 4
+  n_directions = 3
   v1 = torch.eye(dim)[:n_directions]
   v2 = torch.eye(dim)[:n_directions]
   k = RBFKernelDirectionalGrad()
   params = {'v1':v1,'v2':v2}
   K = k(train_x,train_x, **params)
-  print(K.detach().numpy())
+  print(K.detach().numpy().shape)
