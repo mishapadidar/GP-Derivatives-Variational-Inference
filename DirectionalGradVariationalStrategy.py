@@ -93,7 +93,9 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         # - how should we pass in the inducing directions?
         # - decide how we want to pass in (or omit) derivative directions.
         #   For training we need the derivative directions but for inference we don't, we
-        #   just use the inducing directions... i think. So we need
+        #   just use the inducing directions... i think. 
+        #   We could use the boolean model.training to determine if we are in 
+        #   training or eval mode before we set the directions for kernel computations
 
         derivative_directions = kwargs['derivative_directions']
         v1 = torch.cat([self.inducing_directions.data,derivative_directions])
