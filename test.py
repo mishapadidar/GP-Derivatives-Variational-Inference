@@ -34,11 +34,13 @@ from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrateg
 class GPModel(gpytorch.models.ApproximateGP):
     def __init__(self,num_inducing,num_directions,dim):
 
-        self.num_directions = num_directions
+        self.num_directions = num_directions # num directions per point
         self.num_inducing   = num_inducing
         # Let's use a different set of inducing points for each latent function
         inducing_points     = torch.rand(num_inducing, dim)
+        # inducing_directions = torch.rand(num_inducing*num_directions,dim)
         inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
+        inducing_directions = inducing_directions.repeat(num_inducing,1)
         num_directional_derivs = num_directions*num_inducing
 
         # variational distribution q(u,g)
@@ -103,7 +105,7 @@ def train_gp(train_x,train_y,num_inducing=128,
   optimizer = torch.optim.Adam([
       {'params': model.parameters()},
       {'params': likelihood.parameters()},
-  ], lr=0.1)
+  ], lr=0.01)
 
   num_data = train_y.size(0)*train_y.size(1)
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
@@ -125,7 +127,8 @@ def train_gp(train_x,train_y,num_inducing=128,
       # select random columns of y_batch to train on
       y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
       kwargs = {}
-      kwargs['derivative_directions'] = derivative_directions
+      # repeat the derivative directions for each point in x_batch
+      kwargs['derivative_directions'] = derivative_directions.repeat(y_batch.size(0),1)
 
       # pass in interleaved data... so kernel should also interleave
       y_batch = y_batch.reshape(torch.numel(y_batch))
@@ -138,6 +141,7 @@ def train_gp(train_x,train_y,num_inducing=128,
       loss.backward()
       optimizer.step()
 
+  print("\nDone Training!")
   return model,likelihood
 
 
@@ -148,26 +152,35 @@ if __name__ == "__main__":
   
   torch.random.manual_seed(0)
   # generate training data
-  n   = 100
-  dim = 1
-  # train_x = torch.rand(n,dim)
-  # f(x) = sin(x+y), df/dx = cos(x+y), df/dy = cos(x+y)
-  # train_y = torch.stack([torch.sin(train_x[:,0]+train_x[:,1]),
-  #   torch.cos(train_x[:,0]+train_x[:,1]),torch.cos(train_x[:,0]+train_x[:,1])], -1)
-  train_x = torch.linspace(0,2*np.pi,n).reshape(n,dim)
-  train_y = torch.stack([torch.sin(train_x[:,0]),
-    torch.cos(train_x[:,0])], -1)
+  n   = 400
+  dim = 2
+  train_x = torch.rand(n,dim)
+  # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x, df/dy = cos(2pi(x**2+y**2))4pi*y
+  # train_y = torch.stack([torch.sin(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
+  #   4*np.pi*train_x[:,0]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
+  #   4*np.pi*train_x[:,1]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2))], -1)
+  train_y = torch.stack([torch.sin(2*np.pi*train_x[:,0]),2*np.pi*torch.cos(2*np.pi*train_x[:,0]),0.0*train_x[:,1]], -1)
 
-  num_directions = dim
+
+  # generate training data
+  # n   = 100
+  # dim = 1
+  # train_x = torch.linspace(0,2*np.pi,n).reshape(n,dim)
+  # train_y = torch.stack([torch.sin(train_x[:,0]),
+  #   torch.cos(train_x[:,0])], -1)
+  # train_y = torch.stack([torch.sin(train_x[:,0])+torch.exp(-3*train_x[:,0]),
+  #   torch.cos(train_x[:,0]) -3*torch.exp(-3*train_x[:,0])], -1)
+
+  num_directions = dim-1
   # train
   model,likelihood = train_gp(
                         train_x,
                         train_y,
-                        num_inducing=n,
+                        num_inducing=50,
                         num_directions=num_directions,
-                        minibatch_size = 50,
+                        minibatch_size = int(n/2),
                         minibatch_dim = num_directions,
-                        num_epochs = 150
+                        num_epochs =1000
                         )
 
   # Set into eval mode
@@ -176,17 +189,40 @@ if __name__ == "__main__":
 
   # predict
   kwargs = {}
-  kwargs['derivative_directions'] = torch.eye(dim)
+  derivative_directions = torch.eye(dim)[:num_directions]
+  derivative_directions = derivative_directions.repeat(n,1)
+  kwargs['derivative_directions'] = derivative_directions
   preds   = model(train_x, **kwargs).mean.cpu()
-  pred_f  = preds[::dim+1]
-  pred_df = preds[1::dim+1]
-  
+
+  # import matplotlib.pyplot as plt
+  # pred_f  = preds[::dim+1]
+  # pred_df = preds[1::dim+1]
+  # plt.plot(train_x.flatten(),train_y.flatten()[::dim+1],'r-',linewidth=2,label='true f(x)')
+  # plt.plot(train_x.flatten(),pred_f.detach().numpy(),'b-',linewidth=2,label='variational f(x)')
+  # plt.plot(train_x.flatten(),train_y.flatten()[1::dim+1],'r--',linewidth=2,label='true df/dx')
+  # plt.plot(train_x.flatten(),pred_df.detach().numpy(),'b--',linewidth=2,label='variational df/dx')
+  # plt.legend()
+  # plt.tight_layout()
+  # plt.title("Variational GP Predictions with Learned Derivatives")
+  # plt.show()
+
+  from mpl_toolkits.mplot3d import axes3d
   import matplotlib.pyplot as plt
-  plt.plot(train_x.flatten(),train_y.flatten()[::dim+1],'r-',linewidth=2,label='true f(x)')
-  plt.plot(train_x.flatten(),pred_f.detach().numpy(),'b-',linewidth=2,label='variational f(x)')
-  plt.plot(train_x.flatten(),train_y.flatten()[1::dim+1],'r--',linewidth=2,label='true df/dx')
-  plt.plot(train_x.flatten(),pred_df.detach().numpy(),'b--',linewidth=2,label='variational df/dx')
-  plt.legend()
-  plt.tight_layout()
-  plt.title("Variational GP Predictions with Learned Derivatives")
+  fig = plt.figure(figsize=(12,6))
+  ax = fig.add_subplot(111, projection='3d')
+  ax.scatter(train_x[:,0],train_x[:,1],train_y[:,0], color='k')
+  ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[::num_directions+1], color='b')
+  plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
+  plt.show()
+  fig = plt.figure(figsize=(12,6))
+  ax = fig.add_subplot(111, projection='3d')
+  ax.scatter(train_x[:,0],train_x[:,1],train_y[:,1], color='k')
+  ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[1::num_directions+1], color='b')
+  plt.title("df/dx variational fit; actual curve is black, variational is blue")
+  plt.show()
+  fig = plt.figure(figsize=(12,6))
+  ax = fig.add_subplot(111, projection='3d')
+  ax.scatter(train_x[:,0],train_x[:,1],train_y[:,2], color='k')
+  ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[2::dim+1], color='b')
+  plt.title("df/dy variational fit; actual curve is black, variational is blue")
   plt.show()

@@ -100,9 +100,9 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         #   derivative_directions = inducing_directions
 
         num_induc = inducing_points.size(-2)
-        num_directions = inducing_directions.size(-2)
+        num_directions = int(inducing_directions.size(-2)/num_induc)
         num_data = x.size(-2)
-        num_derivative_directions = derivative_directions.size(-2)
+        num_derivative_directions = int(derivative_directions.size(-2)/num_data)
 
         assert num_derivative_directions == num_directions, "Need minibatch size to be same as number of directions for kernel"
 
@@ -111,27 +111,23 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         #
         # set the number of outputs per input.
 
-        # Covariance terms
-        kwargs['v1'] = inducing_directions
-        kwargs['v2'] = inducing_directions
-        self.model.covar_module.base_kernel.set_num_directions(num_directions)
-        induc_induc_covar = self.model.forward(inducing_points, **kwargs).lazy_covariance_matrix.add_jitter()
-        
-        kwargs['v1'] = inducing_directions
-        kwargs['v2'] = derivative_directions
+
+        kwargs['v1'] = torch.cat([inducing_directions,derivative_directions],dim=-2)
+        kwargs['v2'] = torch.cat([inducing_directions,derivative_directions],dim=-2)
         full_inputs   = torch.cat([inducing_points,x],dim=-2)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.forward(full_inputs, **kwargs)
         full_covar  = full_output.lazy_covariance_matrix
+        induc_induc_covar = full_covar[..., :num_induc*(num_directions+1), :num_induc*(num_directions+1)].add_jitter()
         induc_data_covar = full_covar[...,:num_induc*(num_directions+1),-num_data*(num_derivative_directions+1):].evaluate()
         data_induc_covar = full_covar[...,-num_data*(num_derivative_directions+1):,:num_induc*(num_directions+1)].evaluate()
+        data_data_covar = full_covar[..., num_induc*(num_directions+1):, num_induc*(num_directions+1):]
+
+
         # predicts mean for each output
         test_mean = self.model.mean_module(x.repeat_interleave(num_derivative_directions+1,dim=0))  
 
-        kwargs['v1'] = derivative_directions
-        kwargs['v2'] = derivative_directions
-        self.model.covar_module.base_kernel.set_num_directions(num_derivative_directions)
-        data_data_covar = self.model.forward(x, **kwargs).lazy_covariance_matrix
+
 
         # Covariance terms
         # num_induc = inducing_points.size(-2)
