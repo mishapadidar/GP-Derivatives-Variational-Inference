@@ -72,7 +72,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
             # 2) First gradient block
             # v2 = v2.repeat(n2,1)
-            x2_v2 = x2_.reshape(n2,1,dim).bmm(torch.transpose(v2.reshape(n2,n_dir2,dim),-2,-1))
+            x2_v2 = x2_.reshape(n2,1,d).bmm(torch.transpose(v2.reshape(n2,n_dir2,d),-2,-1))
             x1_v2 = x1_ @ v2.T
             outer  = x1_v2 - x2_v2.flatten()
             outer  = outer.reshape(n1,n2,n_dir2)
@@ -86,7 +86,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
             # 3) Second gradient block
             # v11 = v1.repeat(n1,1)
             x2_v1 = x2_ @ v1.T
-            x1_v1  = x1_.reshape(n1,1,dim).bmm(torch.transpose(v1.reshape(n1,n_dir1,dim),-2,-1))
+            x1_v1  = x1_.reshape(n1,1,d).bmm(torch.transpose(v1.reshape(n1,n_dir1,d),-2,-1))
             outer  = x1_v1.flatten() - x2_v1
             outer  = outer.reshape(n2,n1,n_dir1)
             outer  = torch.transpose(outer,0,-2)
