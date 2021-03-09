@@ -71,33 +71,45 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
 
             # 2) First gradient block
-            # v2 = v2.repeat(n2,1)
             x2_v2 = x2_.reshape(n2,1,d).bmm(torch.transpose(v2.reshape(n2,n_dir2,d),-2,-1))
             x1_v2 = x1_ @ v2.T
             outer  = x1_v2 - x2_v2.flatten()
             outer  = outer.reshape(n1,n2,n_dir2)
-            # outer = x1_v2.view(*batch_shape, n1, 1, n_dir2) - x2_v2.view(*batch_shape, 1, n2, n_dir2)
             outer = outer / self.lengthscale.unsqueeze(-2)
             outer = torch.transpose(outer, -1, -2).contiguous()
             outer1 = outer.view(*batch_shape, n1, n2 * n_dir2)
             K[..., :n1, n2:] = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), n_dir2]) 
 
+            # New attempt at first gradient block
+            # outer = x1_.view(*batch_shape, n1, 1, d) - x2_.view(*batch_shape, 1, n2, d)
+            # outer = outer / self.lengthscale.unsqueeze(-2)
+            # outer1 = torch.zeros(n1,n2*(n_dir2))
+            # for ii in range(n_dir2):
+            #   outer1[:,ii*n2:(ii+1)*n2] = torch.sum(outer*v2[ii::n_dir2],dim=2)
+            # K[..., :n1, n2:] = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), n_dir2]) 
+
 
             # 3) Second gradient block
-            # v11 = v1.repeat(n1,1)
             x2_v1 = x2_ @ v1.T
             x1_v1  = x1_.reshape(n1,1,d).bmm(torch.transpose(v1.reshape(n1,n_dir1,d),-2,-1))
-            outer  = x1_v1.flatten() - x2_v1
-            outer  = outer.reshape(n2,n1,n_dir1)
-            outer  = torch.transpose(outer,0,-2)
-            # outer = x1_v1.view(*batch_shape, n1, 1, n_dir1) - x2_v1.view(*batch_shape, 1, n2, n_dir1)
-            # print(outer)
-            outer = outer / self.lengthscale.unsqueeze(-2)
-            outer = torch.transpose(outer, -1, -2).contiguous()
-            outer2 = outer.view(*batch_shape, n1*n_dir1, n2)
-            outer2 = outer.transpose(-1, -3).reshape(*batch_shape, n2, n1 * n_dir1)
+            outer3  = x1_v1.flatten() - x2_v1
+            outer3  = outer3.reshape(n2,n1,n_dir1)
+            outer3  = torch.transpose(outer3,0,-2)
+            outer3 = outer3 / self.lengthscale.unsqueeze(-2)
+            outer3 = torch.transpose(outer3, -1, -2).contiguous()
+            outer2 = outer3.view(*batch_shape, n1*n_dir1, n2)
+            outer2 = outer3.transpose(-1, -3).reshape(*batch_shape, n2, n1 * n_dir1)
             outer2 = outer2.transpose(-1, -2)
             K[..., n1:, :n2] = -outer2 * K_11.repeat([*([1] * n_batch_dims), n_dir1, 1])
+
+            # New attempt at second gradient block
+            # outer = x2_.view(*batch_shape, n2,1, d) - x1_.view(*batch_shape, 1,n1, d)
+            # outer = outer / self.lengthscale.unsqueeze(-2)
+            # print(outer.shape)
+            # outer2 = torch.zeros(n1*n_dir1,n2)
+            # for ii in range(n_dir1):
+            #   outer2[ii*n1:(ii+1)*n1,:] = torch.sum(outer*v1[ii::n_dir1],dim=2).T
+            # K[..., n1:, :n2] = outer2 * K_11.repeat([*([1] * n_batch_dims), n_dir1, 1])
 
             # 4) Hessian block
             outer3 = outer1.repeat([*([1] * n_batch_dims), n_dir1, 1]) * outer2.repeat([*([1] * (n_batch_dims + 1)), n_dir2])
@@ -107,12 +119,6 @@ class RBFKernelDirectionalGrad(RBFKernel):
             )
             chain_rule = kp.evaluate() - outer3
             K[..., n1:, n2:] = chain_rule * K_11.repeat([*([1] * n_batch_dims), n_dir1,n_dir2])
-
-
-            # Symmetrize for stability
-            # in general this should be off... but okay as long as v1 == v2
-            if n1 == n2 and torch.eq(x1, x2).all():
-                K = 0.5 * (K.transpose(-1, -2) + K)
 
             # Apply a perfect shuffle permutation to match the MutiTask ordering
             pi1 = torch.arange(n1 * (n_dir1 + 1)).view(n_dir1 + 1, n1).t().reshape((n1 * (n_dir1 + 1)))
@@ -139,28 +145,55 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
 
 
-if __name__ == '__main__':
+# if __name__ == '__main__':
   
-  torch.manual_seed(0)
-  # generate training data
-  n1   = 5
-  n2   = 3
-  dim = 4
-  train_x = torch.rand(n1,dim)
-  train_x2 = torch.randn(n2,dim)
-  # set directions
-  n_directions = 3
-  v1 = torch.eye(dim)[:n_directions]
-  v1 = v1.repeat(n1,1)
-  v2 = torch.eye(dim)[:n_directions]
-  v2 = v2.repeat(n2,1)
-  k = RBFKernelDirectionalGrad()
-  params = {'v1':v1,'v2':v2}
-  K = k(train_x,train_x2, **params)
-  print(K.detach().numpy().shape)
+#   torch.manual_seed(0)
+#   # generate training data
+#   n1   = 100
+#   n2   = n1
+#   dim = 2
+#   train_x  = torch.rand(n1,dim)
+#   train_x2 = train_x
+#   # set directions
+#   n_directions = 2
+#   # v1 = torch.eye(dim)[:n_directions]
+#   v1 = torch.rand(n_directions,dim)
+#   v1 = v1.repeat(n1,1)
+#   # v2 = torch.eye(dim)[:n_directions]
+#   v2 = torch.rand(n_directions,dim)
+#   v2 = v2.repeat(n2,1)
+#   # v2 = v1
+#   v1 = (v1.T/torch.norm(v1,dim=1)).T
+#   v2 = (v2.T/torch.norm(v2,dim=1)).T
+#   train_x = (torch.linspace(0,2,n1)* (torch.eye(dim)[:1].repeat(n1,1)).T ).T
+#   train_x2 = train_x
+#   k = RBFKernelDirectionalGrad()
+#   params = {'v1':v1,'v2':v2}
+#   K = k(train_x,train_x2, **params)
+#   print(K.detach().numpy().shape)
 
-  # verify against RBFKernelGrad
-  # from gpytorch.kernels import RBFKernelGrad
-  # kk = RBFKernelGrad()
-  # KK = kk(train_x,train_x2)
-  # print(KK.detach().numpy() - K.detach().numpy())
+#   # compute jac
+#   h = 1e-4
+#   v_deriv = v2[1::n_directions]
+#   Kplus = k(train_x,train_x2+h*v_deriv, **params)
+#   jac = (Kplus.detach().numpy()[0,::n_directions+1] - K.detach().numpy()[0,::n_directions+1])/h
+
+#   # verify against RBFKernelGrad
+#   from gpytorch.kernels import RBFKernelGrad
+#   kk = RBFKernelGrad()
+#   KK = kk(train_x,train_x2)
+#   KKplus = kk(train_x,train_x2+h*v_deriv)
+#   jac2 = (KKplus.detach().numpy()[0,::dim+1] - KK.detach().numpy()[0,::dim+1])/h
+
+#   # print(KK.detach().numpy() - K.detach().numpy())
+
+
+#   import matplotlib.pyplot as plt
+#   # plt.plot(K.detach().numpy()[0,::n_directions+1], label='kernel')
+#   plt.plot(K.detach().numpy()[0,2::n_directions+1], label='v2 directional grad')
+#   plt.plot(jac, label='v2 finite diff')
+#   # plt.plot(KK.detach().numpy()[0,::dim+1], label='kernel gpytorch')
+#   # plt.plot(jac2, label='v2 finite diff on gpytorch')
+#   # plt.plot((KK.detach().numpy()[0,1::dim+1]), label='gpytorch e1 directional grad')
+#   plt.legend()
+#   plt.show()
