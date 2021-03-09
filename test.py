@@ -39,6 +39,7 @@ class GPModel(gpytorch.models.ApproximateGP):
         # Let's use a different set of inducing points for each latent function
         inducing_points     = torch.rand(num_inducing, dim)
         # inducing_directions = torch.rand(num_inducing*num_directions,dim)
+        # inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
         inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
         inducing_directions = inducing_directions.repeat(num_inducing,1)
         num_directional_derivs = num_directions*num_inducing
@@ -156,10 +157,10 @@ if __name__ == "__main__":
   dim = 2
   train_x = torch.rand(n,dim)
   # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x, df/dy = cos(2pi(x**2+y**2))4pi*y
-  # train_y = torch.stack([torch.sin(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
-  #   4*np.pi*train_x[:,0]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
-  #   4*np.pi*train_x[:,1]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2))], -1)
-  train_y = torch.stack([torch.sin(2*np.pi*train_x[:,0]),2*np.pi*torch.cos(2*np.pi*train_x[:,0]),0.0*train_x[:,1]], -1)
+  train_y = torch.stack([torch.sin(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
+    4*np.pi*train_x[:,0]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
+    4*np.pi*train_x[:,1]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2))], -1)
+  # train_y = torch.stack([torch.sin(2*np.pi*train_x[:,0]),2*np.pi*torch.cos(2*np.pi*train_x[:,0]),0.0*train_x[:,1]], -1)
 
 
   # generate training data
@@ -171,7 +172,7 @@ if __name__ == "__main__":
   # train_y = torch.stack([torch.sin(train_x[:,0])+torch.exp(-3*train_x[:,0]),
   #   torch.cos(train_x[:,0]) -3*torch.exp(-3*train_x[:,0])], -1)
 
-  num_directions = dim-1
+  num_directions = dim
   # train
   model,likelihood = train_gp(
                         train_x,
@@ -180,7 +181,7 @@ if __name__ == "__main__":
                         num_directions=num_directions,
                         minibatch_size = int(n/2),
                         minibatch_dim = num_directions,
-                        num_epochs =1000
+                        num_epochs =400
                         )
 
   # Set into eval mode
