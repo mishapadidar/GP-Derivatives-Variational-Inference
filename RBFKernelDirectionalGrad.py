@@ -70,56 +70,94 @@ class RBFKernelDirectionalGrad(RBFKernel):
             K[..., :n1, :n2] = K_11
 
 
-            # 2) First gradient block
-            x2_v2 = x2_.reshape(n2,1,d).bmm(torch.transpose(v2.reshape(n2,n_dir2,d),-2,-1))
-            x1_v2 = x1_ @ v2.T
-            outer  = x1_v2 - x2_v2.flatten()
-            outer  = outer.reshape(n1,n2,n_dir2)
+            # New attempt at first gradient block
+            outer = x1_.view(*batch_shape, n1, 1, d) - x2_.view(*batch_shape, 1, n2, d)
             outer = outer / self.lengthscale.unsqueeze(-2)
             outer = torch.transpose(outer, -1, -2).contiguous()
-            outer1 = outer.view(*batch_shape, n1, n2 * n_dir2)
-            K[..., :n1, n2:] = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), n_dir2]) 
+            outer1 = outer.view(*batch_shape, n1, n2 * d)
+            Grad_block = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), d])
+            # Apply a perfect shuffle permutation to match the MutiTask ordering
+            pi1 = torch.arange(n1).view(1, n1).t().reshape((n1))
+            pi2 = torch.arange(n2 * (d)).view(d, n2).t().reshape((n2 * (d)))
+            Grad_block = Grad_block[pi1, :][:, pi2]
+            for ii in range(n_dir2):
+              vv = v2[ii::n_dir2].flatten()
+              R = Grad_block*vv
+              R = R.reshape(n1,n2,d).sum(dim = 2)
+              K[..., :n1, n2+ii*n2:n2+(ii+1)*n2] = R
 
-            # New attempt at first gradient block
-            # outer = x1_.view(*batch_shape, n1, 1, d) - x2_.view(*batch_shape, 1, n2, d)
-            # outer = outer / self.lengthscale.unsqueeze(-2)
-            # outer1 = torch.zeros(n1,n2*(n_dir2))
-            # for ii in range(n_dir2):
-            #   outer1[:,ii*n2:(ii+1)*n2] = torch.sum(outer*v2[ii::n_dir2],dim=2)
+            # 2) First gradient block
+            # x2_v2 = x2_.reshape(n2,1,d).bmm(torch.transpose(v2.reshape(n2,n_dir2,d),-2,-1))
+            # x1_v2 = x1_ @ v2.T
+            # outer  = x1_v2 - x2_v2.flatten()
+            # outer  = outer.reshape(n1,n2,n_dir2)
+            # outer  = outer / self.lengthscale.unsqueeze(-2)
+            # outer  = torch.transpose(outer, -1, -2).contiguous()
+            # outer1 = outer.view(*batch_shape, n1, n2 * n_dir2)
             # K[..., :n1, n2:] = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), n_dir2]) 
 
 
-            # 3) Second gradient block
-            x2_v1 = x2_ @ v1.T
-            x1_v1  = x1_.reshape(n1,1,d).bmm(torch.transpose(v1.reshape(n1,n_dir1,d),-2,-1))
-            outer3  = x1_v1.flatten() - x2_v1
-            outer3  = outer3.reshape(n2,n1,n_dir1)
-            outer3  = torch.transpose(outer3,0,-2)
-            outer3 = outer3 / self.lengthscale.unsqueeze(-2)
-            outer3 = torch.transpose(outer3, -1, -2).contiguous()
-            outer2 = outer3.view(*batch_shape, n1*n_dir1, n2)
-            outer2 = outer3.transpose(-1, -3).reshape(*batch_shape, n2, n1 * n_dir1)
-            outer2 = outer2.transpose(-1, -2)
-            K[..., n1:, :n2] = -outer2 * K_11.repeat([*([1] * n_batch_dims), n_dir1, 1])
-
             # New attempt at second gradient block
-            # outer = x2_.view(*batch_shape, n2,1, d) - x1_.view(*batch_shape, 1,n1, d)
-            # outer = outer / self.lengthscale.unsqueeze(-2)
-            # print(outer.shape)
-            # outer2 = torch.zeros(n1*n_dir1,n2)
-            # for ii in range(n_dir1):
-            #   outer2[ii*n1:(ii+1)*n1,:] = torch.sum(outer*v1[ii::n_dir1],dim=2).T
-            # K[..., n1:, :n2] = outer2 * K_11.repeat([*([1] * n_batch_dims), n_dir1, 1])
+            outer2 = outer.transpose(-1, -3).reshape(*batch_shape, n2, n1 * d)
+            outer2 = outer2.transpose(-1, -2)
+            Grad_block = -outer2 * K_11.repeat([*([1] * n_batch_dims), d, 1])
+            # Apply a perfect shuffle permutation to match the MutiTask ordering
+            pi1 = torch.arange(n1 * (d)).view(d, n1).t().reshape((n1 * (d)))
+            pi2 = torch.arange(n2).view(1, n2).t().reshape(n2)
+            Grad_block = Grad_block[pi1, :][:, pi2]
+            for ii in range(n_dir1):
+              vv = v1[ii::n_dir1].flatten()
+              R = Grad_block.T*vv
+              R = R.reshape(n2,n1,d).sum(dim=2).T
+              K[...,  n1+ii*n1:n1+(ii+1)*n1,:n2] = R
+
+            # 3) Second gradient block
+            # x2_v1 = x2_ @ v1.T
+            # x1_v1  = x1_.reshape(n1,1,d).bmm(torch.transpose(v1.reshape(n1,n_dir1,d),-2,-1))
+            # outer3  = x1_v1.flatten() - x2_v1
+            # outer3  = outer3.reshape(n2,n1,n_dir1)
+            # outer3  = torch.transpose(outer3,0,-2)
+            # outer3 = outer3 / self.lengthscale.unsqueeze(-2)
+            # outer3 = torch.transpose(outer3, -1, -2).contiguous()
+            # outer2 = outer3.view(*batch_shape, n1*n_dir1, n2)
+            # outer2 = outer3.transpose(-1, -3).reshape(*batch_shape, n2, n1 * n_dir1)
+            # outer2 = outer2.transpose(-1, -2)
+            # K[..., n1:, :n2] = -outer2 * K_11.repeat([*([1] * n_batch_dims), n_dir1, 1])
+
 
             # 4) Hessian block
-            outer3 = outer1.repeat([*([1] * n_batch_dims), n_dir1, 1]) * outer2.repeat([*([1] * (n_batch_dims + 1)), n_dir2])
+            # outer3 = outer1.repeat([*([1] * n_batch_dims), n_dir1, 1]) * outer2.repeat([*([1] * (n_batch_dims + 1)), n_dir2])
+            # kp = KroneckerProductLazyTensor(
+            #     torch.eye(n_dir1,n_dir2, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1) / self.lengthscale.pow(2),
+            #     torch.ones(n1, n2, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1),
+            # )
+            # chain_rule = kp.evaluate() - outer3
+            # K[..., n1:, n2:] = chain_rule * K_11.repeat([*([1] * n_batch_dims), n_dir1,n_dir2])
+
+            # new hessian block
+            outer3 = outer1.repeat([*([1] * n_batch_dims), d, 1]) * outer2.repeat([*([1] * (n_batch_dims + 1)), d])
             kp = KroneckerProductLazyTensor(
-                torch.eye(n_dir1,n_dir2, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1) / self.lengthscale.pow(2),
+                torch.eye(d, d, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1) / self.lengthscale.pow(2),
                 torch.ones(n1, n2, device=x1.device, dtype=x1.dtype).repeat(*batch_shape, 1, 1),
             )
             chain_rule = kp.evaluate() - outer3
-            K[..., n1:, n2:] = chain_rule * K_11.repeat([*([1] * n_batch_dims), n_dir1,n_dir2])
+            Hess_block = chain_rule * K_11.repeat([*([1] * n_batch_dims), d, d])
+            # Apply a perfect shuffle permutation to match the MutiTask ordering
+            pi1 = torch.arange(n1 * (d)).view(d, n1).t().reshape((n1 * (d)))
+            pi2 = torch.arange(n2*d).view(d, n2).t().reshape(d*n2)
+            Hess_block = Hess_block[pi1, :][:, pi2]
+            for ii in range(n_dir1):
+              for jj in range(n_dir2):
+                vv1 = v1[ii::n_dir1].flatten()
+                vv2 = v2[jj::n_dir2].flatten()
+                # multiply by directions
+                HH = ((Hess_block * vv2.flatten()).T * vv1.flatten()).T
+                # reshape to separate blocks from each other
+                HH = HH.view(n1,d,n2*d).permute(0,-1,1).view(n1,n2,d,d).transpose(-1,-2)
+                # take sums
+                K[...,  n1+ii*n1:n1+(ii+1)*n1,n2+jj*n2:n2+(jj+1)*n2] = HH.sum(dim = (-1,-2))
 
+            
             # Apply a perfect shuffle permutation to match the MutiTask ordering
             pi1 = torch.arange(n1 * (n_dir1 + 1)).view(n_dir1 + 1, n1).t().reshape((n1 * (n_dir1 + 1)))
             pi2 = torch.arange(n2 * (n_dir2 + 1)).view(n_dir2 + 1, n2).t().reshape((n2 * (n_dir2 + 1)))
