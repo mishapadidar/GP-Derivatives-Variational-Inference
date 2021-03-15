@@ -38,14 +38,17 @@ class GPModel(gpytorch.models.ApproximateGP):
         self.num_inducing   = num_inducing
         # Let's use a different set of inducing points for each latent function
         inducing_points     = torch.rand(num_inducing, dim)
-        # inducing_directions = torch.rand(num_inducing*num_directions,dim)
-        # inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
-        inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
-        inducing_directions = inducing_directions.repeat(num_inducing,1)
+        inducing_directions = torch.rand(num_inducing*num_directions,dim)
+        inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+        # inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
+        # inducing_directions = inducing_directions.repeat(num_inducing,1)
         num_directional_derivs = num_directions*num_inducing
 
+
         # variational distribution q(u,g)
-        variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
+        # variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
+        #     num_inducing + num_directional_derivs)
+        variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             num_inducing + num_directional_derivs)
         # variational strategy q(f)
         variational_strategy = DirectionalGradVariationalStrategy(self, 
@@ -55,7 +58,6 @@ class GPModel(gpytorch.models.ApproximateGP):
         # set the mean and covariance
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(RBFKernelDirectionalGrad())
-        # self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernelGrad())
 
 
     def forward(self, x, **params):
@@ -151,9 +153,9 @@ def train_gp(train_x,train_y,num_inducing=128,
 
 if __name__ == "__main__":
   
-  torch.random.manual_seed(0)
+  # torch.random.manual_seed(0)
   # generate training data
-  n   = 400
+  n   = 600
   dim = 2
   train_x = torch.rand(n,dim)
   # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x, df/dy = cos(2pi(x**2+y**2))4pi*y
@@ -177,16 +179,19 @@ if __name__ == "__main__":
   model,likelihood = train_gp(
                         train_x,
                         train_y,
-                        num_inducing=50,
+                        num_inducing=20,
                         num_directions=num_directions,
-                        minibatch_size = int(n/2),
+                        minibatch_size = 100,
                         minibatch_dim = num_directions,
-                        num_epochs =400
+                        num_epochs =1000
                         )
 
   # Set into eval mode
   model.eval()
   likelihood.eval()
+  for param in model.parameters():
+    if param.requires_grad:
+      print(param.data)
 
   # predict
   kwargs = {}
@@ -206,6 +211,7 @@ if __name__ == "__main__":
   # plt.tight_layout()
   # plt.title("Variational GP Predictions with Learned Derivatives")
   # plt.show()
+
 
   from mpl_toolkits.mplot3d import axes3d
   import matplotlib.pyplot as plt
