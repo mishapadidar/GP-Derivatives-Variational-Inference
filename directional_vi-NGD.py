@@ -222,7 +222,6 @@ if __name__ == "__main__":
   preds_y = preds.detach().numpy()[::num_directions+1]
   mse = np.mean((preds_y - train_y.flatten()[::dim+1].numpy())**2)
   print(f"ntrain = {n}, num_inducing = {num_inducing}, num_directions = {num_directions}, num_epochs = {num_epochs}")
-  print("Training MSE: ", np.var(preds_y - train_y[:,0].detach().numpy()))
   print(f"MSE = {mse:.4e}")
 
   # import matplotlib.pyplot as plt
