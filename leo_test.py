@@ -181,7 +181,7 @@ if __name__ == "__main__":
                         num_inducing=20,
                         num_directions=num_directions,
                         minibatch_size = 100,
-                        minibatch_dim = num_directions,
+                        minibatch_dim = num_directions,#dont change
                         num_epochs =1000
                         )
 
@@ -198,7 +198,13 @@ if __name__ == "__main__":
   derivative_directions = derivative_directions.repeat(n,1)
   kwargs['derivative_directions'] = derivative_directions
   preds   = model(train_x, **kwargs).mean.cpu()
-  
+
+  # after making preds 
+  # # predicted function values
+  preds_y = preds.detach().numpy()[::num_directions+1]
+  print("")
+  print("Training MSE: ", np.var(preds_y - train_y[:,0].detach().numpy()))
+
   # import matplotlib.pyplot as plt
   # pred_f  = preds[::dim+1]
   # pred_df = preds[1::dim+1]
