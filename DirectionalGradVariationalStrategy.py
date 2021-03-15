@@ -68,7 +68,7 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         self.register_buffer("updated_strategy", torch.tensor(True))
         self._register_load_state_dict_pre_hook(_ensure_updated_strategy_flag_set)
         self.register_parameter(name="inducing_directions", parameter=torch.nn.Parameter(inducing_directions.clone()))
-        self.register_buffer("variational_inducing_directions_initialized", torch.tensor(0))
+        # self.register_buffer("variational_inducing_directions_initialized", torch.tensor(0))
 
     @cached(name="cholesky_factor", ignore_args=True)
     def _cholesky_factor(self, induc_induc_covar):
@@ -91,7 +91,7 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         # Compute full prior distribution
 
         # get the inducing directions
-        inducing_directions =self.inducing_directions.data
+        inducing_directions =self.inducing_directions
 
         # if self.model.training:
         #   # use the derivative directions in training mode
