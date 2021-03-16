@@ -22,9 +22,7 @@ class GPModel(ApproximateGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-
-
-n   = 600
+n  = 600
 dim = 2
 train_x = torch.rand(n,dim)
 # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x, df/dy = cos(2pi(x**2+y**2))4pi*y
@@ -91,6 +89,7 @@ with torch.no_grad():
     for x_batch, y_batch in test_loader:
         preds = model(x_batch)
         means = torch.cat([means, preds.mean.cpu()])
+print("MEANS")
 means = means[1:]
 
 print("")
