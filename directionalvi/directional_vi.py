@@ -4,10 +4,11 @@ import torch
 import gpytorch
 import tqdm
 import random
+print("is directional_vi updating?")
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
-from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
-from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
+from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
+from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 
 """Notes from Jake
 [x] we will pass in mini-batches of data stochastically with a fixed size of observations,
@@ -91,10 +92,25 @@ def select_cols_of_y(y_batch,minibatch_dim,dim):
   return y_batch,derivative_directions
 
 
-def train_gp(train_x,train_y,num_inducing=128,
+def train_gp(train_dataset,num_inducing=128,
   num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
+  """Train a Derivative GP with the Directional Derivative
+  Variational Inference method
+
+  train_dataset: torch Dataset
+  num_inducing: int, number of inducing points
+  num_directions: int, number of inducing directions (per inducing point)
+  minbatch_size: int, number of data points in a minibatch
+  minibatch_dim: int, number of derivative per point in minibatch training
+                 WARNING: This must equal num_directions until we complete
+                 the PR in GpyTorch.
+  num_epochs: int, number of epochs
+  """
   
-  dim = train_x.size(-1)
+  # set up the data loader
+  train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+  dim = len(train_dataset[0][0])
+  n_samples = len(train_dataset)
 
   # initialize model
   model = GPModel(num_inducing,num_directions,dim)
@@ -109,12 +125,9 @@ def train_gp(train_x,train_y,num_inducing=128,
       {'params': likelihood.parameters()},
   ], lr=0.01)
 
-  num_data = train_y.size(0)*train_y.size(1)
+  num_data = (dim+1)*n_samples
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
 
-  # set up the data loader
-  train_dataset = TensorDataset(train_x, train_y)
-  train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
 
   # train
   epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
@@ -149,7 +162,6 @@ def train_gp(train_x,train_y,num_inducing=128,
 
 
 
-
 if __name__ == "__main__":
   
   # torch.random.manual_seed(0)
@@ -163,7 +175,7 @@ if __name__ == "__main__":
     4*np.pi*train_x[:,1]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2))], -1)
   # train_y = torch.stack([torch.sin(2*np.pi*train_x[:,0]),2*np.pi*torch.cos(2*np.pi*train_x[:,0]),0.0*train_x[:,1]], -1)
 
-
+  print("here!!!")
   # generate training data
   # n   = 100
   # dim = 1
@@ -181,7 +193,7 @@ if __name__ == "__main__":
                         num_inducing=20,
                         num_directions=num_directions,
                         minibatch_size = 100,
-                        minibatch_dim = num_directions,#dont change
+                        minibatch_dim = num_directions,
                         num_epochs =1000
                         )
 
@@ -198,13 +210,7 @@ if __name__ == "__main__":
   derivative_directions = derivative_directions.repeat(n,1)
   kwargs['derivative_directions'] = derivative_directions
   preds   = model(train_x, **kwargs).mean.cpu()
-
-  # after making preds 
-  # # predicted function values
-  preds_y = preds.detach().numpy()[::num_directions+1]
-  print("")
-  print("Training MSE: ", np.var(preds_y - train_y[:,0].detach().numpy()))
-
+  
   # import matplotlib.pyplot as plt
   # pred_f  = preds[::dim+1]
   # pred_df = preds[1::dim+1]

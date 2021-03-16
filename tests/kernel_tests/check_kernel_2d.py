@@ -2,7 +2,7 @@
 import torch
 import matplotlib.pyplot as plt
 from gpytorch.lazy.kronecker_product_lazy_tensor import KroneckerProductLazyTensor
-from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
+from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 import numpy as np
 
 torch.manual_seed(100)
@@ -10,7 +10,6 @@ torch.manual_seed(100)
 n1   = 100
 n2   = n1
 dim = 2
-
 
 ## ===========================================
 # Test 1: Varying Positions, 1 direction
