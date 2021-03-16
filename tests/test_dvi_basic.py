@@ -90,7 +90,6 @@ means = means[1:]
 test_y = test_y[1:]
 test_x = test_x[1:]
 
-
 # compute MSE
 test_mse = MSE(test_y[:,0],means[::num_directions+1])
 print(f"\nTesting MSE: {test_mse}")
