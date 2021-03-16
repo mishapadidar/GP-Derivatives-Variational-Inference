@@ -1,6 +1,8 @@
 
-import torch
+from torch import is_tensor
 from torch.utils.data import Dataset
+from torch.quasirandom import SobolEngine
+from rescale import from_unit_cube
 
 class synthetic_dataset(Dataset):
     """A synthetic dataset that generates data when called from. 
@@ -17,15 +19,22 @@ class synthetic_dataset(Dataset):
       self.ub = ub
       self.n_points = n_points
       self.dim = dim
+      self.sobol = SobolEngine(dim,scramble=True)
 
     def __len__(self):
       return self.n_points
 
     def __getitem__(self, idx):
-      if torch.is_tensor(idx):
+      if is_tensor(idx):
         idx = idx.tolist()
+      # reset the sobol sequence
+      self.sobol.reset()
+      # fast forward to the desired index
+      self.sobol.fast_forward(idx-1)
       # generate a point
-      x = torch.rand(self.dim)*(self.ub - self.lb) + self.lb
+      x = self.sobol.draw().flatten()
+      # map from unit cube
+      x = x * (self.ub - self.lb) + self.lb
       # evaluate it
       fx = self.f(x)
       # return a tuple of tensors
