@@ -10,11 +10,8 @@ from torch.utils.data import TensorDataset, DataLoader
 #sys.path.append("../")
 #sys.path.append("../utils")
 from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
-print("here1")
 from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
-print("here2")
 from directionalvi.directional_vi import train_gp
-print("here3")
 from directionalvi.utils.metrics import MSE
 
 def f(x):
