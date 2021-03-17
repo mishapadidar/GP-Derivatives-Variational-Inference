@@ -4,6 +4,7 @@ import torch
 import gpytorch
 import tqdm
 import random
+import time
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 #import sys
@@ -43,6 +44,7 @@ test_dataset = TensorDataset(test_x,test_y)
 print("\n\n---DirectionalGradVGP---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+t1 = time.time_ns()	
 model,likelihood = train_gp(train_dataset,
                       num_inducing=num_inducing,
                       num_directions=num_directions,
@@ -50,6 +52,7 @@ model,likelihood = train_gp(train_dataset,
                       minibatch_dim = num_directions,
                       num_epochs =num_epochs
                       )
+t2 = time.time_ns()	
 
 # save the model
 # torch.save(model.state_dict(), "../data/test_dvi_basic.model")
@@ -61,11 +64,14 @@ means, variances = eval_gp( test_dataset,model,likelihood,
                             minibatch_size=n_test,
                             minibatch_dim=num_directions,
                             num_epochs=1)
+t3 = time.time_ns()	
+
 # compute MSE
 test_mse = MSE(test_y[:,0],means[::num_directions+1])
 # compute mean negative predictive density
 test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y[:,0]).mean()
-print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}")
+print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
+print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
 # TODO: call some plot util funs here
 # from mpl_toolkits.mplot3d import axes3d

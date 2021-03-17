@@ -4,6 +4,7 @@ from gpytorch.variational import VariationalStrategy
 from torch.utils.data import TensorDataset, DataLoader
 import tqdm
 import math
+import time
 import torch
 import gpytorch
 from matplotlib import pyplot as plt
@@ -65,6 +66,7 @@ if torch.cuda.is_available():
     likelihood = likelihood.cuda()
 
 # model training
+t1 = time.time_ns()	
 model.train()
 likelihood.train()
 
@@ -74,7 +76,6 @@ optimizer = torch.optim.Adam([
 
 # Our loss object. We're using the VariationalELBO
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_y.size(0))
-
 epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
 for i in epochs_iter:
     # Within each iteration, we will go over each minibatch of data
@@ -86,6 +87,7 @@ for i in epochs_iter:
         epochs_iter.set_postfix(loss=loss.item())
         loss.backward()
         optimizer.step()
+t2 = time.time_ns()	
 
 # model testing
 model.eval()
@@ -104,12 +106,14 @@ with torch.no_grad():
         variances = torch.cat([variances, preds.variance.cpu()])
 means = means[1:]
 variances = variances[1:]
+t3 = time.time_ns()	
 
 # compute MSE
 test_mse = MSE(test_y,means)
 # compute mean negative predictive density
 test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y).mean()
 print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}")
+print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
 
 # from mpl_toolkits.mplot3d import axes3d
