@@ -4,7 +4,6 @@ import torch
 import gpytorch
 import tqdm
 import random
-print("is directional_vi updating?")
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad

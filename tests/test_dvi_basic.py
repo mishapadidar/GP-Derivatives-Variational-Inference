@@ -6,13 +6,14 @@ import tqdm
 import random
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
-#import sys
-#sys.path.append("../")
-#sys.path.append("../utils")
-from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
-from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
-from directionalvi.directional_vi import train_gp
-from directionalvi.utils.metrics import MSE
+import sys
+sys.path.append("../directionalvi")
+sys.path.append("../directionalvi/utils")
+from directional_vi import train_gp
+#from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
+#from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
+#from directionalvi.directional_vi import train_gp
+#from directionalvi.utils.metrics import MSE
 
 def f(x):
   # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x
