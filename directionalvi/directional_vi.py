@@ -9,6 +9,7 @@ from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
 from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
+from directionalvi.utils.metrics import MSE
 
 """Notes from Jake
 [x] we will pass in mini-batches of data stochastically with a fixed size of observations,
@@ -33,7 +34,7 @@ from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVari
 """
 
 class GPModel(gpytorch.models.ApproximateGP):
-    def __init__(self,num_inducing,num_directions,dim, **kwargs):
+    def __init__(self,num_inducing,num_directions,dim,**kwargs):
 
         self.num_directions = num_directions # num directions per point
         self.num_inducing   = num_inducing
@@ -51,7 +52,7 @@ class GPModel(gpytorch.models.ApproximateGP):
         #     num_inducing + num_directional_derivs)
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             num_inducing + num_directional_derivs)
-        if kwargs["variational_distribution"] == "NGD":
+        if "variational_distribution" in kwargs and kwargs["variational_distribution"] == "NGD":
             variational_distribution = gpytorch.variational.NaturalVariationalDistribution(
               num_inducing + num_directional_derivs)
 
@@ -109,7 +110,8 @@ def train_gp(train_dataset,num_inducing=128,
                  the PR in GpyTorch.
   num_epochs: int, number of epochs
   """
-  
+  assert num_directions == minibatch_dim
+
   # set up the data loader
   train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
   dim = len(train_dataset[0][0])
@@ -130,7 +132,6 @@ def train_gp(train_dataset,num_inducing=128,
 
   num_data = (dim+1)*n_samples
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
-
 
   # train
   epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
@@ -162,7 +163,7 @@ def train_gp(train_dataset,num_inducing=128,
   print("\nDone Training!")
   return model,likelihood
 
-def train_gp_NGD(train_dataset,num_inducing=128,
+def train_gp_ngd(train_dataset,num_inducing=128,
   num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method using natrural gradient descent
@@ -176,11 +177,13 @@ def train_gp_NGD(train_dataset,num_inducing=128,
                  the PR in GpyTorch.
   num_epochs: int, number of epochs
   """
-  
+  assert num_directions == minibatch_dim
+
   # set up the data loader
   train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
   dim = len(train_dataset[0][0])
   n_samples = len(train_dataset)
+  num_data = (dim+1)*n_samples
 
   # initialize model
   model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD")
@@ -190,16 +193,14 @@ def train_gp_NGD(train_dataset,num_inducing=128,
   model.train()
   likelihood.train()
 
-  variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=train_y.size(0), lr=0.1)
+
+  variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=num_data, lr=0.1)
   hyperparameter_optimizer = torch.optim.Adam([
       {'params': model.hyperparameters()},
       {'params': likelihood.parameters()},
   ], lr=0.01)
 
-
-  num_data = (dim+1)*n_samples
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
-
 
   # train
   epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
@@ -230,61 +231,97 @@ def train_gp_NGD(train_dataset,num_inducing=128,
       variational_ngd_optimizer.step()
       hyperparameter_optimizer.step()
 
-
   print("\nDone Training!")
   return model,likelihood
 
+def eval_gp(test_dataset,model,likelihood, num_inducing=128,
+  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
+  
+  assert num_directions == minibatch_dim
 
+  dim = len(test_dataset[0][0])
+  n_test = len(test_dataset)
+  test_loader = DataLoader(test_dataset, batch_size=minibatch_size, shuffle=False)
+  
+  model.eval()
+  likelihood.eval()
+  
+  kwargs = {}
+  derivative_directions = torch.eye(dim)[:num_directions]
+  derivative_directions = derivative_directions.repeat(n_test,1)
+  kwargs['derivative_directions'] = derivative_directions
+  means = torch.tensor([0.])
+  variances = torch.tensor([0.])
+  with torch.no_grad():
+    for x_batch, y_batch in test_loader:
+        preds = model(x_batch,**kwargs)
+        means = torch.cat([means, preds.mean.cpu()])
+        variances = torch.cat([variances, preds.variance.cpu()])
 
+  means = means[1:]
+  variances = variances[1:]
+
+  print("\nDone Testing!")
+
+  return means, variances
 
 if __name__ == "__main__":
   
-  # torch.random.manual_seed(0)
-  # generate training data
+  torch.random.manual_seed(0)
   n   = 600
   dim = 2
-  train_x = torch.rand(n,dim)
-  # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x, df/dy = cos(2pi(x**2+y**2))4pi*y
-  train_y = torch.stack([torch.sin(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
-    4*np.pi*train_x[:,0]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2)),
-    4*np.pi*train_x[:,1]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2))], -1)
-  # train_y = torch.stack([torch.sin(2*np.pi*train_x[:,0]),2*np.pi*torch.cos(2*np.pi*train_x[:,0]),0.0*train_x[:,1]], -1)
+  n_test = 10
+  num_directions = dim
+  num_inducing = 20
+  minibatch_size = 200
+  num_epochs = 10
+
+  # a test case
+  def f(x):
+    # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x
+    fx = torch.sin(2*np.pi*torch.sum(x**2,dim=1))
+    gx = 4*np.pi*( torch.cos(2*np.pi*torch.sum(x**2,dim=1)) * x.T).T
+    fx = fx.reshape(len(x),1)
+    return torch.cat([fx,gx],1)
 
   # generate training data
-  # n   = 100
-  # dim = 1
+  train_x = torch.rand(n,dim)
   # train_x = torch.linspace(0,2*np.pi,n).reshape(n,dim)
-  # train_y = torch.stack([torch.sin(train_x[:,0]),
-  #   torch.cos(train_x[:,0])], -1)
-  # train_y = torch.stack([torch.sin(train_x[:,0])+torch.exp(-3*train_x[:,0]),
-  #   torch.cos(train_x[:,0]) -3*torch.exp(-3*train_x[:,0])], -1)
+  train_y = f(train_x)
+  train_dataset = TensorDataset(train_x,train_y)
 
-  num_directions = dim
+
+  # generate testing data
+  test_x = torch.rand(n_test,dim)
+  test_y = f(test_x)
+  test_dataset = TensorDataset(test_x,test_y)
+
   # train
-  model,likelihood = train_gp(
-                        train_x,
-                        train_y,
-                        num_inducing=20,
-                        num_directions=num_directions,
-                        minibatch_size = 100,
-                        minibatch_dim = num_directions,
-                        num_epochs =1000
-                        )
+  model,likelihood = train_gp(train_dataset,
+                              num_inducing=num_inducing,
+                              num_directions=num_directions,
+                              minibatch_size=minibatch_size,
+                              minibatch_dim=num_directions,
+                              num_epochs=num_epochs)
 
-  # Set into eval mode
-  model.eval()
-  likelihood.eval()
-  for param in model.parameters():
-    if param.requires_grad:
-      print(param.data)
-
-  # predict
-  kwargs = {}
-  derivative_directions = torch.eye(dim)[:num_directions]
-  derivative_directions = derivative_directions.repeat(n,1)
-  kwargs['derivative_directions'] = derivative_directions
-  preds   = model(train_x, **kwargs).mean.cpu()
+  # test
+  means, variances = eval_gp( test_dataset,model,likelihood,
+                                                  num_inducing=num_inducing,
+                                                  num_directions=num_directions,
+                                                  minibatch_size=n_test,
+                                                  minibatch_dim=num_directions,
+                                                  num_epochs=1)
   
+  # compute MSE
+  test_mse = MSE(test_y[:,0],means[::num_directions+1])
+  # compute mean negative predictive density
+  test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y[:,0]).mean()
+  print(f"Testing MSE: {test_mse:.4e}, nll: {test_nll:.4e}")
+
+  # plot! 
+  # call some plot util functions here
+
+
   # import matplotlib.pyplot as plt
   # pred_f  = preds[::dim+1]
   # pred_df = preds[1::dim+1]
@@ -298,23 +335,23 @@ if __name__ == "__main__":
   # plt.show()
 
 
-  from mpl_toolkits.mplot3d import axes3d
-  import matplotlib.pyplot as plt
-  fig = plt.figure(figsize=(12,6))
-  ax = fig.add_subplot(111, projection='3d')
-  ax.scatter(train_x[:,0],train_x[:,1],train_y[:,0], color='k')
-  ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[::num_directions+1], color='b')
-  plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
-  plt.show()
-  fig = plt.figure(figsize=(12,6))
-  ax = fig.add_subplot(111, projection='3d')
-  ax.scatter(train_x[:,0],train_x[:,1],train_y[:,1], color='k')
-  ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[1::num_directions+1], color='b')
-  plt.title("df/dx variational fit; actual curve is black, variational is blue")
-  plt.show()
-  fig = plt.figure(figsize=(12,6))
-  ax = fig.add_subplot(111, projection='3d')
-  ax.scatter(train_x[:,0],train_x[:,1],train_y[:,2], color='k')
-  ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[2::dim+1], color='b')
-  plt.title("df/dy variational fit; actual curve is black, variational is blue")
-  plt.show()
+  # from mpl_toolkits.mplot3d import axes3d
+  # import matplotlib.pyplot as plt
+  # fig = plt.figure(figsize=(12,6))
+  # ax = fig.add_subplot(111, projection='3d')
+  # ax.scatter(train_x[:,0],train_x[:,1],train_y[:,0], color='k')
+  # ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[::num_directions+1], color='b')
+  # plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
+  # plt.show()
+  # fig = plt.figure(figsize=(12,6))
+  # ax = fig.add_subplot(111, projection='3d')
+  # ax.scatter(train_x[:,0],train_x[:,1],train_y[:,1], color='k')
+  # ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[1::num_directions+1], color='b')
+  # plt.title("df/dx variational fit; actual curve is black, variational is blue")
+  # plt.show()
+  # fig = plt.figure(figsize=(12,6))
+  # ax = fig.add_subplot(111, projection='3d')
+  # ax.scatter(train_x[:,0],train_x[:,1],train_y[:,2], color='k')
+  # ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[2::dim+1], color='b')
+  # plt.title("df/dy variational fit; actual curve is black, variational is blue")
+  # plt.show()
