@@ -1,4 +1,4 @@
-xinran/*.ipynb
-xinran/*.ipynb_checkpoints
+gpytorch_tutorials
 notebooks/*.ipynb_checkpoints
 __pycache__
+tests/*.sh
