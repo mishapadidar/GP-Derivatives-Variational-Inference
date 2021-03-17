@@ -4,7 +4,7 @@ import torch
 import gpytorch
 import tqdm
 import random
-print("is directional_vi updating?")
+print("\n\nIs directional_vi updating?")
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
@@ -261,7 +261,7 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,
   means = means[1:]
   variances = variances[1:]
 
-  print("\nDone Testing!")
+  print("Done Testing!")
 
   return means, variances
 

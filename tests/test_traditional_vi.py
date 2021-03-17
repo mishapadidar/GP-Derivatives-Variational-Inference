@@ -27,11 +27,14 @@ class GPModel(ApproximateGP):
 
 # setups
 n  = 600
-n_test = 10
+n_test = 1000
 dim = 2
 num_inducing = 20
 batch_size = int(n/2)
-num_epochs = 100
+num_epochs = 1000
+
+# seed
+torch.random.manual_seed(0)
 
 # trainig data
 train_x = torch.rand(n,dim)
@@ -47,7 +50,7 @@ test_dataset = TensorDataset(test_x, test_y)
 test_loader = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
 
-print("---Standard SVGP---")
+print("\n\n---Standard SVGP---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points")
 

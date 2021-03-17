@@ -18,13 +18,13 @@ import testfun
 # data parameters
 n   = 600
 dim = 2
-n_test = 100
+n_test = 1000
 
 # training params
 num_inducing = 20
 num_directions = 1
 minibatch_size = 200
-num_epochs = 100
+num_epochs = 1000
 
 # seed
 torch.random.manual_seed(0)
@@ -40,7 +40,7 @@ test_y = testfun.f(test_x)
 test_dataset = TensorDataset(test_x,test_y)
 
 # train
-print("---DirectionalGradVGP---")
+print("\n\n---DirectionalGradVGP---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 model,likelihood = train_gp(train_dataset,
