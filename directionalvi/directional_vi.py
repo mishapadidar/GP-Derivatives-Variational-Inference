@@ -33,7 +33,7 @@ from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVari
 """
 
 class GPModel(gpytorch.models.ApproximateGP):
-    def __init__(self,num_inducing,num_directions,dim):
+    def __init__(self,num_inducing,num_directions,dim, **kwargs):
 
         self.num_directions = num_directions # num directions per point
         self.num_inducing   = num_inducing
@@ -51,6 +51,10 @@ class GPModel(gpytorch.models.ApproximateGP):
         #     num_inducing + num_directional_derivs)
         variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             num_inducing + num_directional_derivs)
+        if kwargs["variational_distribution"] == "NGD":
+            variational_distribution = gpytorch.variational.NaturalVariationalDistribution(
+              num_inducing + num_directional_derivs)
+
         # variational strategy q(f)
         variational_strategy = DirectionalGradVariationalStrategy(self, 
           inducing_points,inducing_directions, variational_distribution, learn_inducing_locations=True)
@@ -59,7 +63,6 @@ class GPModel(gpytorch.models.ApproximateGP):
         # set the mean and covariance
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(RBFKernelDirectionalGrad())
-
 
     def forward(self, x, **params):
         mean_x  = self.mean_module(x)
@@ -159,6 +162,78 @@ def train_gp(train_dataset,num_inducing=128,
   print("\nDone Training!")
   return model,likelihood
 
+def train_gp_NGD(train_dataset,num_inducing=128,
+  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
+  """Train a Derivative GP with the Directional Derivative
+  Variational Inference method using natrural gradient descent
+
+  train_dataset: torch Dataset
+  num_inducing: int, number of inducing points
+  num_directions: int, number of inducing directions (per inducing point)
+  minbatch_size: int, number of data points in a minibatch
+  minibatch_dim: int, number of derivative per point in minibatch training
+                 WARNING: This must equal num_directions until we complete
+                 the PR in GpyTorch.
+  num_epochs: int, number of epochs
+  """
+  
+  # set up the data loader
+  train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+  dim = len(train_dataset[0][0])
+  n_samples = len(train_dataset)
+
+  # initialize model
+  model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD")
+  likelihood = gpytorch.likelihoods.GaussianLikelihood()
+
+  # training mode
+  model.train()
+  likelihood.train()
+
+  variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=train_y.size(0), lr=0.1)
+  hyperparameter_optimizer = torch.optim.Adam([
+      {'params': model.hyperparameters()},
+      {'params': likelihood.parameters()},
+  ], lr=0.01)
+
+
+  num_data = (dim+1)*n_samples
+  mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
+
+
+  # train
+  epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
+  for i in epochs_iter:
+
+    # iterator for minibatches
+    minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
+
+    # loop through minibatches
+    for x_batch, y_batch in minibatch_iter:
+
+      # select random columns of y_batch to train on
+      y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
+      kwargs = {}
+      # repeat the derivative directions for each point in x_batch
+      kwargs['derivative_directions'] = derivative_directions.repeat(y_batch.size(0),1)
+
+      # pass in interleaved data... so kernel should also interleave
+      y_batch = y_batch.reshape(torch.numel(y_batch))
+      # x_batch = x_batch.repeat_interleave(minibatch_dim+1,dim=0)
+
+      variational_ngd_optimizer.zero_grad()
+      hyperparameter_optimizer.zero_grad()
+      output = model(x_batch,**kwargs)
+      loss = -mll(output, y_batch)
+      epochs_iter.set_postfix(loss=loss.item())
+      loss.backward()
+      variational_ngd_optimizer.step()
+      hyperparameter_optimizer.step()
+
+
+  print("\nDone Training!")
+  return model,likelihood
+
 
 
 
@@ -175,7 +250,6 @@ if __name__ == "__main__":
     4*np.pi*train_x[:,1]*torch.cos(2*np.pi*(train_x[:,0]**2+train_x[:,1]**2))], -1)
   # train_y = torch.stack([torch.sin(2*np.pi*train_x[:,0]),2*np.pi*torch.cos(2*np.pi*train_x[:,0]),0.0*train_x[:,1]], -1)
 
-  print("here!!!")
   # generate training data
   # n   = 100
   # dim = 1
