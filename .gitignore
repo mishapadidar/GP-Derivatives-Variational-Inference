@@ -1,2 +1,7 @@
 xinran/*.ipynb
-xinran/.ipynb_checkpoints
+xinran/*.ipynb_checkpoints
+notebooks/*.ipynb_checkpoints
+__pycache__
+build
+dist
+gp_derivatives_variational_inference.egg-info
