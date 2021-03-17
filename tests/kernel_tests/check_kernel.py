@@ -2,7 +2,8 @@
 import torch
 
 from gpytorch.lazy.kronecker_product_lazy_tensor import KroneckerProductLazyTensor
-from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
+#from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
+from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 
 torch.manual_seed(10)
 # generate training data
