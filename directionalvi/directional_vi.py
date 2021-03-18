@@ -6,8 +6,12 @@ import tqdm
 import random
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
-from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
-from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
+import sys
+#sys.path.append("../directionalvi")
+sys.path.append("utils")
+
+from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
+from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 
 """Notes from Jake
 [x] we will pass in mini-batches of data stochastically with a fixed size of observations,

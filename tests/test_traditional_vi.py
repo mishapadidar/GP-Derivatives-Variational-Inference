@@ -44,7 +44,6 @@ if torch.cuda.is_available():
 
 num_epochs = 1000
 
-
 model.train()
 likelihood.train()
 
@@ -55,8 +54,6 @@ optimizer = torch.optim.Adam([
 
 # Our loss object. We're using the VariationalELBO
 mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_y.size(0))
-
-
 
 from torch.utils.data import TensorDataset, DataLoader
 train_dataset = TensorDataset(train_x, train_y)
@@ -73,6 +70,8 @@ for i in epochs_iter:
         optimizer.zero_grad()
         output = model(x_batch)
         loss = -mll(output, y_batch)
+        #print(loss.item())
+        #print(loss.shape)
         epochs_iter.set_postfix(loss=loss.item())
         loss.backward()
         optimizer.step()
