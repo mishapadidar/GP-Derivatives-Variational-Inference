@@ -1,7 +1,4 @@
-xinran/*.ipynb
-xinran/*.ipynb_checkpoints
+gpytorch_tutorials
 notebooks/*.ipynb_checkpoints
 __pycache__
-build
-dist
-gp_derivatives_variational_inference.egg-info
+tests/*.sh

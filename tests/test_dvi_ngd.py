@@ -12,7 +12,7 @@ from torch.utils.data import TensorDataset, DataLoader
 #sys.path.append("../utils")
 from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
-from directionalvi.directional_vi import train_gp, eval_gp
+from directionalvi.directional_vi import train_gp, eval_gp, train_gp_ngd
 from directionalvi.utils.metrics import MSE
 import testfun
 
@@ -41,21 +41,21 @@ test_y = testfun.f(test_x)
 test_dataset = TensorDataset(test_x,test_y)
 
 # train
-print("\n\n---DirectionalGradVGP---")
+print("\n\n---DirectionalGradVGP with NGD---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 t1 = time.time_ns()	
-model,likelihood = train_gp(train_dataset,
+model,likelihood = train_gp_ngd(train_dataset,
                       num_inducing=num_inducing,
                       num_directions=num_directions,
                       minibatch_size = minibatch_size,
                       minibatch_dim = num_directions,
                       num_epochs =num_epochs
                       )
-t2 = time.time_ns()	
 
 # save the model
 # torch.save(model.state_dict(), "../data/test_dvi_basic.model")
+t2 = time.time_ns()	
 
 # test
 means, variances = eval_gp( test_dataset,model,likelihood,
@@ -70,27 +70,7 @@ t3 = time.time_ns()
 test_mse = MSE(test_y[:,0],means[::num_directions+1])
 # compute mean negative predictive density
 test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y[:,0]).mean()
-print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
+print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}")
 print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
 # TODO: call some plot util funs here
-# from mpl_toolkits.mplot3d import axes3d
-# import matplotlib.pyplot as plt
-# fig = plt.figure(figsize=(12,6))
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(test_x[:,0],test_x[:,1],test_y[:,0], color='k')
-# ax.scatter(test_x[:,0],test_x[:,1],means[::num_directions+1], color='b')
-# plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
-# plt.show()
-# fig = plt.figure(figsize=(12,6))
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(test_x[:,0],test_x[:,1],test_y[:,1], color='k')
-# ax.scatter(test_x[:,0],test_x[:,1],means[1::num_directions+1], color='b')
-# plt.title("df/dx variational fit; actual curve is black, variational is blue")
-# plt.show()
-# fig = plt.figure(figsize=(12,6))
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(test_x[:,0],test_x[:,1],test_y[:,2], color='k')
-# ax.scatter(test_x[:,0],test_x[:,1],means[2::num_directions+1], color='b')
-# plt.title("df/dy variational fit; actual curve is black, variational is blue")
-# plt.show()
