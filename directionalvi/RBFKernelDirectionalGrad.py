@@ -78,8 +78,8 @@ class RBFKernelDirectionalGrad(RBFKernel):
             x1_v2 = x1_ @ v2.T
             outer  = x1_v2 - x2_v2.flatten()
             # permute cols so we get blocks for v1,v2,v3,...
-            pi2 = torch.arange(n2 * (n_dir2)).view(n2,n_dir2).t().reshape((n2 * (n_dir2)))
-            outer1 = outer[:,pi2]/ self.lengthscale.unsqueeze(-2)
+            pi1 = torch.arange(n2 * (n_dir2)).view(n2,n_dir2).t().reshape((n2 * (n_dir2)))
+            outer1 = outer[:,pi1]/ self.lengthscale.unsqueeze(-2)
             K[..., :n1, n2:] = outer1 * K_11.repeat([*([1] * (n_batch_dims + 1)), n_dir2]) 
 
             # Second gradient block
@@ -103,7 +103,7 @@ class RBFKernelDirectionalGrad(RBFKernel):
 
             # mishas rules
             kp = v1 @ v2.T / self.lengthscale.pow(2)
-            kp = kp[:,pi2]
+            kp = kp[:,pi1]
             kp = kp[pi2,:]
             # print(kp)
             chain_rule = kp - outer3
