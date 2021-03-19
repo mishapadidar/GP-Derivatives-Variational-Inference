@@ -104,11 +104,7 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         num_directions = int(inducing_directions.size(-2)/num_induc)
         num_data = x.size(-2)
         num_derivative_directions = int(derivative_directions.size(-2)/num_data)
-        print("num_induc is: ", num_induc)
-        print("num_data is: ", num_data)
-        print("num_derivative_directions is: ", num_derivative_directions)
-        print("num_directions is: ", num_directions)
-        assert num_derivative_directions == num_directions, "Need minibatch size to be same as number of directions for kernel"
+        assert num_derivative_directions == num_directions, "Need minibatch dim to be same as number of directions for kernel"
 
         # TODO (future)
         # - figure out how to avoid setting num directions
