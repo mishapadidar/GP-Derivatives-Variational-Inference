@@ -4,3 +4,4 @@ __pycache__
 tests/*.sh
 experiments/LeNet/scratch
 experiments/LeNet/data
+experiments/bunny/bunny_data
