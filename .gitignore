@@ -2,3 +2,5 @@ gpytorch_tutorials
 notebooks/*.ipynb_checkpoints
 __pycache__
 tests/*.sh
+experiments/LeNet/scratch
+experiments/LeNet/data
