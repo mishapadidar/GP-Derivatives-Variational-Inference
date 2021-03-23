@@ -108,14 +108,14 @@ class RBFKernelDirectionalGrad(RBFKernel):
             return K
 
         else:
-            if not (n1 == n2 and torch.eq(x1, x2).all()):
-                raise RuntimeError("diag=True only works when x1 == x2")
+            if not (n1 == n2 and torch.eq(x1, x2).all() and n_dir1 == n_dir2 and torch.eq(v1, v2).all()):
+                raise RuntimeError("diag=True only works when x1 == x2 and v1 == v2")
 
-            kernel_diag = super(RBFKernelGrad, self).forward(x1, x2, diag=True)
-            grad_diag = torch.ones(*batch_shape, n2, d, device=x1.device, dtype=x1.dtype) / self.lengthscale.pow(2)
-            grad_diag = grad_diag.transpose(-1, -2).reshape(*batch_shape, n2 * d)
+            kernel_diag = super(RBFKernelDirectionalGrad, self).forward(x1, x2, diag=True)
+            grad_diag = torch.ones(*batch_shape, n2, n_dir2, device=x1.device, dtype=x1.dtype) / self.lengthscale.pow(2)
+            grad_diag = grad_diag.transpose(-1, -2).reshape(*batch_shape, n2 * n_dir2)
             k_diag = torch.cat((kernel_diag, grad_diag), dim=-1)
-            pi = torch.arange(n2 * (d + 1)).view(d + 1, n2).t().reshape((n2 * (d + 1)))
+            pi = torch.arange(n2 * (n_dir2 + 1)).view(n_dir2 + 1, n2).t().reshape((n2 * (n_dir2 + 1)))
             return k_diag[..., pi]
 
     def set_num_directions(self,num_directions):
@@ -153,7 +153,7 @@ if __name__ == '__main__':
   K = k(train_x,train_x2, **params)
   print(K.detach().numpy().shape)
 
-  torch.cholesky(K.add_jitter().evaluate())
+  # torch.cholesky(K.add_jitter().evaluate())
   # verify against RBFKernelGrad
   # from gpytorch.kernels import RBFKernelGrad
   # kk = RBFKernelGrad()
