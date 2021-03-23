@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 import sys
 sys.path.append("../")
-sys.path.append("../utils")
+sys.path.append("../directionalvi/utils")
 sys.path.append("../directionalvi")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
@@ -74,24 +74,24 @@ test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt
 print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
 print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
-# # TODO: call some plot util funs here
-# from mpl_toolkits.mplot3d import axes3d
-# import matplotlib.pyplot as plt
-# fig = plt.figure(figsize=(12,6))
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(test_x[:,0],test_x[:,1],test_y[:,0], color='k')
-# ax.scatter(test_x[:,0],test_x[:,1],means[::num_directions+1], color='b')
-# plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
-# plt.show()
-# fig = plt.figure(figsize=(12,6))
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(test_x[:,0],test_x[:,1],test_y[:,1], color='k')
-# ax.scatter(test_x[:,0],test_x[:,1],means[1::num_directions+1], color='b')
-# plt.title("df/dx variational fit; actual curve is black, variational is blue")
-# plt.show()
-# fig = plt.figure(figsize=(12,6))
-# ax = fig.add_subplot(111, projection='3d')
-# ax.scatter(test_x[:,0],test_x[:,1],test_y[:,2], color='k')
-# ax.scatter(test_x[:,0],test_x[:,1],means[2::num_directions+1], color='b')
-# plt.title("df/dy variational fit; actual curve is black, variational is blue")
-# plt.show()
+# TODO: call some plot util funs here
+from mpl_toolkits.mplot3d import axes3d
+import matplotlib.pyplot as plt
+fig = plt.figure(figsize=(12,6))
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(test_x[:,0],test_x[:,1],test_y[:,0], color='k')
+ax.scatter(test_x[:,0],test_x[:,1],means[::num_directions+1], color='b')
+plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
+plt.show()
+fig = plt.figure(figsize=(12,6))
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(test_x[:,0],test_x[:,1],test_y[:,1], color='k')
+ax.scatter(test_x[:,0],test_x[:,1],means[1::num_directions+1], color='b')
+plt.title("df/dx variational fit; actual curve is black, variational is blue")
+plt.show()
+fig = plt.figure(figsize=(12,6))
+ax = fig.add_subplot(111, projection='3d')
+ax.scatter(test_x[:,0],test_x[:,1],test_y[:,2], color='k')
+ax.scatter(test_x[:,0],test_x[:,1],means[2::num_directions+1], color='b')
+plt.title("df/dy variational fit; actual curve is black, variational is blue")
+plt.show()
