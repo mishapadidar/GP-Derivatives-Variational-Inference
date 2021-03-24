@@ -1,4 +1,4 @@
-name: testenv
+name: DSVGP
 channels:
   - pytorch
   - intel
@@ -106,4 +106,4 @@ dependencies:
     - traitsui==7.1.1
     - vtk==9.0.1
     - zipp==3.4.1
-prefix: /home/xz584/anaconda3/envs/testenv
+prefix: /home/xz584/anaconda3/envs/DSVGP
