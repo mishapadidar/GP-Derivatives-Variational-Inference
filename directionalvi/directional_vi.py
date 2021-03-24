@@ -53,11 +53,12 @@ class GPModel(gpytorch.models.ApproximateGP):
         # variational distribution q(u,g)
         # variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
         #     num_inducing + num_directional_derivs)
-        variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
-            num_inducing + num_directional_derivs)
         if "variational_distribution" in kwargs and kwargs["variational_distribution"] == "NGD":
-            variational_distribution = gpytorch.variational.NaturalVariationalDistribution(
-              num_inducing + num_directional_derivs)
+          variational_distribution = gpytorch.variational.NaturalVariationalDistribution(
+            num_inducing + num_directional_derivs)
+        else:
+          variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
+            num_inducing + num_directional_derivs)
 
         # variational strategy q(f)
         if "variational_strategy" in kwargs and kwargs["variational_strategy"] == "CIQ":
