@@ -9,11 +9,11 @@ from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 import sys
 sys.path.append("../")
-sys.path.append("../directionalvi/utils")
 sys.path.append("../directionalvi")
+sys.path.append("../directionalvi/utils")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
-from directional_vi import train_gp, eval_gp
+from directional_vi import train_gp_ciq, eval_gp
 from metrics import MSE
 import testfun
 
@@ -46,7 +46,7 @@ print("\n\n---DirectionalGradVGP---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 t1 = time.time()	
-model,likelihood = train_gp(train_dataset,
+model,likelihood = train_gp_ciq(train_dataset,
                       num_inducing=num_inducing,
                       num_directions=num_directions,
                       minibatch_size = minibatch_size,
@@ -74,7 +74,7 @@ test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt
 print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
 print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
-# TODO: call some plot util funs here
+# # TODO: call some plot util funs here
 from mpl_toolkits.mplot3d import axes3d
 import matplotlib.pyplot as plt
 fig = plt.figure(figsize=(12,6))

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-print("in Directional Grad Variational Strategy.py")
 import warnings
 
 import torch
