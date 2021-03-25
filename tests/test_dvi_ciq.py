@@ -26,10 +26,11 @@ n_test = 1000
 num_inducing = 20
 num_directions = 1
 minibatch_size = 200
-num_epochs = 1000
+num_epochs = 100
 
 # seed
 torch.random.manual_seed(0)
+tqdm=False
 
 # trainig and testing data
 train_x = torch.rand(n,dim)
@@ -54,7 +55,7 @@ model,likelihood = train_gp_ciq(train_dataset,
                       num_directions=num_directions,
                       minibatch_size = minibatch_size,
                       minibatch_dim = num_directions,
-                      num_epochs =num_epochs, tqdm=True
+                      num_epochs =num_epochs, tqdm=tqdm
                       )
 t2 = time.time()	
 

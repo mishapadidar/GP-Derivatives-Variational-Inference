@@ -26,7 +26,7 @@ n_test = 1000
 num_inducing = 20
 num_directions = 1
 minibatch_size = 200
-num_epochs = 1000
+num_epochs = 100
 
 # seed
 torch.random.manual_seed(0)
