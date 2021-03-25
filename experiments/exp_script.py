@@ -6,22 +6,23 @@ import tqdm
 import argparse
 import random
 import time
+import sys
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
-import sys
 sys.path.append("../")
 sys.path.append("../directionalvi/utils")
 sys.path.append("../directionalvi")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
-from directional_vi import train_gp, eval_gp
+from directional_vi import *
 from metrics import MSE
 from synthetic.test_funs import *
+# sys.path.append("../baselines")
+# import traditional_vi
 
 def main(**args):
     # seed
     torch.random.manual_seed(args["seed"])
-
     testfun_name = f"{args['test_fun']}"
     testfun = eval(f"{testfun_name}_with_deriv")()
     dim = testfun.dim
@@ -36,54 +37,74 @@ def main(**args):
     assert num_inducing < n
     assert num_directions <= dim
     assert minibatch_size <= n
-    expname_train = f"{testfun_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_seed{args['seed']}"
+    if args["model"]=="SVGP":
+        expname_train = f"SVGP_{testfun_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_seed{args['seed']}"
+    elif args["model"]=="DSVGP":
+        expname_train = f"DSVGP_{testfun_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_seed{args['seed']}"
     expname_test = f"{expname_train}_ntest{n_test}"
-    print(f"\nStart Experiment: expname_test")
+    print(f"\nStart Experiment: {expname_test}")
 
     # generate training data
     train_x = torch.rand(n,dim)
-    train_y = testfun.evaluate_true_with_deriv(train_x)
-    # testing data
     test_x = torch.rand(n_test,dim)
-    test_y = testfun.evaluate_true_with_deriv(test_x)
+    if args["model"]=="SVGP":
+        train_y = testfun.evaluate_true(train_x)
+        test_y = testfun.evaluate_true(test_x)
+    elif args["model"]=="DSVGP":
+        train_y = testfun.evaluate_true_with_deriv(train_x)
+        test_y = testfun.evaluate_true_with_deriv(test_x)
     # if torch.cuda.is_available():
     #     train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
     train_dataset = TensorDataset(train_x,train_y)
     test_dataset = TensorDataset(test_x,test_y)
 
     # train
-    print("\n\n---DirectionalGradVGP---")
-    print(f"Start training with {n} trainig data of dim {dim}")
-    print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
-    t1 = time.time()	
-    if args["variational_distribution"] == "standard" and args["variational_strategy"] == "standard":
-        model,likelihood = train_gp(train_dataset,
-                            num_inducing=num_inducing,
-                            num_directions=num_directions,
-                            minibatch_size = minibatch_size,
-                            minibatch_dim = num_directions,
-                            num_epochs =num_epochs,
-                            tqdm=False
-                            )
-    elif args["variational_distribution"] == "NGD" and args["variational_strategy"] == "standard":
-        model,likelihood = train_gp_ngd(train_dataset,
-                            num_inducing=num_inducing,
-                            num_directions=num_directions,
-                            minibatch_size = minibatch_size,
-                            minibatch_dim = num_directions,
-                            num_epochs =num_epochs,
-                            tqdm=False
-                            )
-    elif args["variational_strategy"] == "CIQ":
-        model,likelihood = train_gp_ciq(train_dataset,
-                            num_inducing=num_inducing,
-                            num_directions=num_directions,
-                            minibatch_size = minibatch_size,
-                            minibatch_dim = num_directions,
-                            num_epochs =num_epochs,
-                            tqdm=False
-                            )
+    if args["model"]=="SVGP":
+        print("\n\n---Traditional SVGP---")
+        print(f"Start training with {n} trainig data of dim {dim}")
+        print(f"VI setups: {num_inducing} inducing points")
+    elif args["model"]=="DSVGP":
+        print("\n\n---D-SVGP---")
+        print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
+        print(f"Start training with {n} trainig data of dim {dim}")
+        print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
+    t1 = time.time()	
+
+    if args["model"]=="SVGP":
+        model,likelihood = traditional_vi.train_gp(train_dataset,
+                                                   num_inducing=num_inducing,
+                                                   minibatch_size=minibatch_size,
+                                                   num_epochs=num_epochs,
+                                                   tqdm=False)
+    elif args["model"]=="DSVGP":
+        if variational_dist == "standard" and variational_strat == "standard":
+            model,likelihood = train_gp(train_dataset,
+                                num_inducing=num_inducing,
+                                num_directions=num_directions,
+                                minibatch_size=minibatch_size,
+                                minibatch_dim=num_directions,
+                                num_epochs=num_epochs,
+                                tqdm=False
+                                )
+        elif variational_dist == "NGD" and variational_strat == "standard":
+            model,likelihood = train_gp_ngd(train_dataset,
+                                num_inducing=num_inducing,
+                                num_directions=num_directions,
+                                minibatch_size=minibatch_size,
+                                minibatch_dim=num_directions,
+                                num_epochs=num_epochs,
+                                tqdm=False
+                                )
+        elif variational_strat == "CIQ":
+            model,likelihood = train_gp_ciq(train_dataset,
+                                num_inducing=num_inducing,
+                                num_directions=num_directions,
+                                minibatch_size=minibatch_size,
+                                minibatch_dim=num_directions,
+                                num_epochs=num_epochs,
+                                tqdm=False)
+    
     t2 = time.time()	
 
     # save the model
@@ -91,12 +112,16 @@ def main(**args):
         torch.save(model.state_dict(), f"../data/{expname_train}.model")
 
     # test
-    means, variances = eval_gp( test_dataset,model,likelihood,
-                                num_inducing=num_inducing,
-                                num_directions=num_directions,
-                                minibatch_size=n_test,
-                                minibatch_dim=num_directions,
-                                num_epochs=1)
+    if args["model"]=="SVGP":
+        means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
+                                                  num_inducing=num_inducing,
+                                                  minibatch_size=n_test)
+    elif args["model"]=="DSVGP":
+        means, variances = eval_gp( test_dataset,model,likelihood,
+                                    num_inducing=num_inducing,
+                                    num_directions=num_directions,
+                                    minibatch_size=n_test,
+                                    minibatch_dim=num_directions)
     t3 = time.time()	
 
     # compute MSE
@@ -120,6 +145,7 @@ if __name__ == "__main__":
     #TODO: add real dataset experiment
     # parser.add_argument("-d", "--dataset", type=str, default="bunny")
     parser.add_argument("-f", "--test_fun", type=str, default="Branin")
+    parser.add_argument("--model", type=str, default="DSVGP")
     parser.add_argument("-vs", "--variational_strategy", type=str, default="standard", choices=["standard", "CIQ"])
     parser.add_argument("-vd", "--variational_distribution", type=str, default="standard", choices=["standard", "NGD"])
 
