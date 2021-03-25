@@ -128,9 +128,9 @@ def train_gp(train_dataset,num_inducing=128,
   # initialize model
   model = GPModel(num_inducing,num_directions,dim)
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
-  # if torch.cuda.is_available():
-  #   model = model.cuda()
-  #   likelihood = likelihood.cuda()
+  if torch.cuda.is_available():
+    model = model.cuda()
+    likelihood = likelihood.cuda()
   # training mode
   model.train()
   likelihood.train()
@@ -387,25 +387,18 @@ if __name__ == "__main__":
   minibatch_size = 200
   num_epochs = 10
 
-  # a test case
-  def f(x):
-    # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x
-    fx = torch.sin(2*np.pi*torch.sum(x**2,dim=1))
-    gx = 4*np.pi*( torch.cos(2*np.pi*torch.sum(x**2,dim=1)) * x.T).T
-    fx = fx.reshape(len(x),1)
-    return torch.cat([fx,gx],1)
-
-  # generate training data
+  # trainig and testing data
   train_x = torch.rand(n,dim)
-  # train_x = torch.linspace(0,2*np.pi,n).reshape(n,dim)
-  train_y = f(train_x)
-  train_dataset = TensorDataset(train_x,train_y)
-
-
-  # generate testing data
   test_x = torch.rand(n_test,dim)
-  test_y = f(test_x)
-  test_dataset = TensorDataset(test_x,test_y)
+  train_y = testfun.f(train_x, deriv=False)
+  test_y = testfun.f(test_x, deriv=False)
+  if torch.cuda.is_available():
+      train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+
+  train_dataset = TensorDataset(train_x, train_y)
+  test_dataset = TensorDataset(test_x, test_y)
+  train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+  test_loader = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
   # train
   model,likelihood = train_gp(train_dataset,
@@ -413,18 +406,18 @@ if __name__ == "__main__":
                               num_directions=num_directions,
                               minibatch_size=minibatch_size,
                               minibatch_dim=num_directions,
-                              num_epochs=num_epochs)
+                              num_epochs=num_epochs, tqdm=True)
 
   # test
   means, variances = eval_gp( test_dataset,model,likelihood,
                                                   num_inducing=num_inducing,
                                                   num_directions=num_directions,
                                                   minibatch_size=n_test,
-                                                  minibatch_dim=num_directions,
-                                                  num_epochs=1)
+                                                  minibatch_dim=num_directions)
   
   # compute MSE
-  test_mse = MSE(test_y[:,0],means[::num_directions+1])
+  test_y = test_y.cpu()
+  test_mse = MSE(test_y[:,0].cpu,means[::num_directions+1])
   # compute mean negative predictive density
   test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y[:,0]).mean()
   print(f"Testing MSE: {test_mse:.4e}, nll: {test_nll:.4e}")

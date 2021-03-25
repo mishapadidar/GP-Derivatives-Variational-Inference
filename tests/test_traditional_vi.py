@@ -36,7 +36,7 @@ n  = 600
 n_test = 1000
 dim = 2
 num_inducing = 20
-batch_size = int(n/2)
+minibatch_size = int(n/2)
 num_epochs = 1000
 
 # seed
@@ -52,7 +52,7 @@ if torch.cuda.is_available():
 
 train_dataset = TensorDataset(train_x, train_y)
 test_dataset = TensorDataset(test_x, test_y)
-train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
 print("\n\n---Standard SVGP---")
@@ -64,7 +64,7 @@ print(f"VI setups: {num_inducing} inducing points")
 t1 = time.time_ns()	
 model,likelihood = traditional_vi.train_gp(train_dataset,dim,
                                             num_inducing=num_inducing,
-                                            minibatch_size=batch_size,
+                                            minibatch_size=minibatch_size,
                                             num_epochs=num_epochs,
                                             tqdm=False)
 t2 = time.time_ns()	
