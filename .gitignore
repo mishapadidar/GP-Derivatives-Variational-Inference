@@ -6,3 +6,4 @@ experiments/LeNet/scratch
 slurm_output
 experiments/logs/a.*
 experiments/real_data_process/lenet/scratch
+experiments/real_data-copy
