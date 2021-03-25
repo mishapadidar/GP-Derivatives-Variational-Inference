@@ -71,10 +71,10 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
                 epochs_iter.set_postfix(loss=loss.item())           
             loss.backward()
             optimizer.step()
-        if i % 100 == 0 and print_loss
+        if i % 100 == 0 and print_loss:
             print(f"Training epoch {i}, loss: {loss.item()}")
     if print_loss:
-    print(f"Training epoch {i}, loss: {loss.item()}")
+        print(f"Training epoch {i}, loss: {loss.item()}")
 
     print("\nDone Training!")
     return model, likelihood
