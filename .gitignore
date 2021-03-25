@@ -3,8 +3,7 @@ notebooks/*.ipynb_checkpoints
 __pycache__
 tests/*.sh
 experiments/LeNet/scratch
-experiments/LeNet/data
-experiments/bunny/bunny_data
-directionalvi/test
-experiments/synthetic/synthetic.py
-tests/slurm_output
+slurm_output
+experiments/logs/a.*
+experiments/real_data_process/lenet/scratch
+experiments/real_data
