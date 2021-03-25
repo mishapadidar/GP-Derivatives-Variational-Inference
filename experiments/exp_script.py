@@ -15,10 +15,10 @@ sys.path.append("../directionalvi")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
 from directional_vi import *
+import traditional_vi
 from metrics import MSE
 from synthetic.test_funs import *
-# sys.path.append("../baselines")
-# import traditional_vi
+
 
 def main(**args):
     # seed
@@ -53,8 +53,8 @@ def main(**args):
     elif args["model"]=="DSVGP":
         train_y = testfun.evaluate_true_with_deriv(train_x)
         test_y = testfun.evaluate_true_with_deriv(test_x)
-    # if torch.cuda.is_available():
-    #     train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+    if torch.cuda.is_available():
+        train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
     train_dataset = TensorDataset(train_x,train_y)
     test_dataset = TensorDataset(test_x,test_y)
 
@@ -72,7 +72,7 @@ def main(**args):
     t1 = time.time()	
 
     if args["model"]=="SVGP":
-        model,likelihood = traditional_vi.train_gp(train_dataset,
+        model,likelihood = traditional_vi.train_gp(train_dataset,dim,
                                                    num_inducing=num_inducing,
                                                    minibatch_size=minibatch_size,
                                                    num_epochs=num_epochs,
@@ -116,18 +116,21 @@ def main(**args):
         means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
                                                   num_inducing=num_inducing,
                                                   minibatch_size=n_test)
+        # metrics
+        test_mse = MSE(test_y.cpu(),means)
+        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
                                     num_inducing=num_inducing,
                                     num_directions=num_directions,
                                     minibatch_size=n_test,
                                     minibatch_dim=num_directions)
+        # compute MSE
+        test_mse = MSE(test_y.cpu()[:,0],means[::num_directions+1])
+        # compute mean negative predictive density
+        test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
+    
     t3 = time.time()	
-
-    # compute MSE
-    test_mse = MSE(test_y[:,0],means[::num_directions+1])
-    # compute mean negative predictive density
-    test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y[:,0]).mean()
     print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
     print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 

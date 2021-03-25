@@ -11,20 +11,27 @@ model="DSVGP"
 
 # compare different methods
 # find the runlogs in logs folder
-variational_strategy="standard"
-variational_distribution="standard"
-sh ./exp_setup.sh ${test_fun} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}
+# variational_strategy="standard"
+# variational_distribution="standard"
+# sh ./exp_setup.sh ${test_fun} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}
 
-variational_strategy="standard"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${test_fun} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}
+# variational_strategy="standard"
+# variational_distribution="NGD"
+# sh ./exp_setup.sh ${test_fun} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}
 
 # variational_strategy="CIQ"
 # variational_distribution="NGD"
 # sh ./exp_setup.sh ${test_fun} ${variational_strategy} ${variational_distribution}\
 #                   ${n_train} ${n_test} ${num_inducing}\
 #                   ${num_directions} ${num_epochs} ${batch_size} ${model}
+
+variational_strategy="standard"
+variational_distribution="NGD"
+model="SVGP"
+sh ./exp_setup.sh ${test_fun} ${variational_strategy} ${variational_distribution}\
+                  ${n_train} ${n_test} ${num_inducing}\
+                  ${num_directions} ${num_epochs} ${batch_size} ${model}
