@@ -3,9 +3,6 @@ notebooks/*.ipynb_checkpoints
 __pycache__
 tests/*.sh
 experiments/LeNet/scratch
-experiments/LeNet/data
-experiments/bunny/bunny_data
-directionalvi/test
 slurm_output
 experiments/logs/a.*
-experiments/real/lenet/scratch
+experiments/real_data_process/lenet/scratch
