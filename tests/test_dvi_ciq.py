@@ -51,7 +51,7 @@ model,likelihood = train_gp_ciq(train_dataset,
                       num_directions=num_directions,
                       minibatch_size = minibatch_size,
                       minibatch_dim = num_directions,
-                      num_epochs =num_epochs
+                      num_epochs =num_epochs, tqdm=True
                       )
 t2 = time.time()	
 
@@ -63,8 +63,7 @@ means, variances = eval_gp( test_dataset,model,likelihood,
                             num_inducing=num_inducing,
                             num_directions=num_directions,
                             minibatch_size=n_test,
-                            minibatch_dim=num_directions,
-                            num_epochs=1)
+                            minibatch_dim=num_directions)
 t3 = time.time()	
 
 # compute MSE
