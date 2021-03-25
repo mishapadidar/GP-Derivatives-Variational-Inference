@@ -98,7 +98,7 @@ def select_cols_of_y(y_batch,minibatch_dim,dim):
   y_batch = y_batch[:,idx_y]
 
   # dont pass a direction if we load function values
-  E_canonical = torch.eye(dim)
+  E_canonical = torch.eye(dim).to(y_batch.device)
   derivative_directions = E_canonical[np.array(idx_y[1:])-1]
 
   return y_batch,derivative_directions
