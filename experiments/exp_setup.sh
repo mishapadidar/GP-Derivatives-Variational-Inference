@@ -10,6 +10,12 @@ num_epochs=${8}
 batch_size=${9}
 model=${10}
 
+
+if [ ! -d "./logs" ]
+then
+    mkdir ./logs
+fi
+
 python exp_script.py \
     --test_fun ${test_fun} --variational_strategy ${variational_strategy}\
     --variational_distribution ${variational_distribution} \
