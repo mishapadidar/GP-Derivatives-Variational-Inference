@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-print("in Directional Grad Variational Strategy.py")
 import warnings
 
 import torch
@@ -104,11 +103,7 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         num_directions = int(inducing_directions.size(-2)/num_induc)
         num_data = x.size(-2)
         num_derivative_directions = int(derivative_directions.size(-2)/num_data)
-        print("num_induc is: ", num_induc)
-        print("num_data is: ", num_data)
-        print("num_derivative_directions is: ", num_derivative_directions)
-        print("num_directions is: ", num_directions)
-        assert num_derivative_directions == num_directions, "Need minibatch size to be same as number of directions for kernel"
+        assert num_derivative_directions == num_directions, "Need minibatch dim to be same as number of directions for kernel"
 
         # TODO (future)
         # - figure out how to avoid setting num directions
@@ -130,25 +125,25 @@ class DirectionalGradVariationalStrategy(_VariationalStrategy):
         # predicts mean for each output
         test_mean = self.model.mean_module(x.repeat_interleave(num_derivative_directions+1,dim=0))  
 
-        kwargs['v1'] = inducing_directions
-        kwargs['v2'] = derivative_directions
+        kwargs['v1'] = inducing_directions.to(x.device)
+        kwargs['v2'] = derivative_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.covar_module(inducing_points,x, **kwargs)
         induc_data_covar  = full_output.evaluate()
-        kwargs['v1'] = derivative_directions
-        kwargs['v2'] = inducing_directions
+        kwargs['v1'] = derivative_directions.to(x.device)
+        kwargs['v2'] = inducing_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.covar_module(x,inducing_points, **kwargs)
         data_induc_covar = full_output.evaluate()
 
 
-        kwargs['v1'] = inducing_directions
-        kwargs['v2'] = inducing_directions
+        kwargs['v1'] = inducing_directions.to(x.device)
+        kwargs['v2'] = inducing_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.forward(inducing_points, **kwargs)
         induc_induc_covar  = full_output.lazy_covariance_matrix.add_jitter()
-        kwargs['v1'] = derivative_directions
-        kwargs['v2'] = derivative_directions
+        kwargs['v1'] = derivative_directions.to(x.device)
+        kwargs['v2'] = derivative_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.forward(x, **kwargs)
         data_data_covar  = full_output.lazy_covariance_matrix
