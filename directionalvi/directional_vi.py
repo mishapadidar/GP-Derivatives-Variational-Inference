@@ -105,7 +105,7 @@ def select_cols_of_y(y_batch,minibatch_dim,dim):
 
 
 def train_gp(train_dataset,num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
+  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,**args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
 
@@ -128,7 +128,9 @@ def train_gp(train_dataset,num_inducing=128,
   # initialize model
   model = GPModel(num_inducing,num_directions,dim)
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
-
+  # if torch.cuda.is_available():
+  #   model = model.cuda()
+  #   likelihood = likelihood.cuda()
   # training mode
   model.train()
   likelihood.train()
@@ -142,11 +144,17 @@ def train_gp(train_dataset,num_inducing=128,
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
 
   # train
-  epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
-  for i in epochs_iter:
+  if "tqdm" in args and not args["tqdm"]:
+    epochs_iter = range(num_epochs)
+  else:
+    epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
 
+  for i in epochs_iter:
     # iterator for minibatches
-    minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
+    if "tqdm" in args and not args["tqdm"]:
+      minibatch_iter = train_loader
+    else:
+      minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
 
     # loop through minibatches
     for x_batch, y_batch in minibatch_iter:
@@ -164,15 +172,18 @@ def train_gp(train_dataset,num_inducing=128,
       optimizer.zero_grad()
       output = model(x_batch,**kwargs)
       loss   = -mll(output, y_batch)
-      epochs_iter.set_postfix(loss=loss.item())
+      if "tqdm" in args and args["tqdm"]:
+        epochs_iter.set_postfix(loss=loss.item())
       loss.backward()
       optimizer.step()
+    if i % 100 == 0:
+        print(f"Training epoch {i}, loss: {loss.item()}")
 
   print("\nDone Training!")
   return model,likelihood
 
 def train_gp_ngd(train_dataset,num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
+  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,**kwargs):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method using natrural gradient descent
 
@@ -196,12 +207,14 @@ def train_gp_ngd(train_dataset,num_inducing=128,
   # initialize model
   model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD")
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
+  # if torch.cuda.is_available():
+  #   model = model.cuda()
+  #   likelihood = likelihood.cuda()
 
   # training mode
   model.train()
   likelihood.train()
-
-
+  
   variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=num_data, lr=0.1)
   hyperparameter_optimizer = torch.optim.Adam([
       {'params': model.hyperparameters()},
@@ -211,11 +224,18 @@ def train_gp_ngd(train_dataset,num_inducing=128,
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
 
   # train
-  epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
+  if "tqdm" in args and not args["tqdm"]:
+    epochs_iter = range(num_epochs)
+  else:
+    epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
+
   for i in epochs_iter:
 
     # iterator for minibatches
-    minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
+    if "tqdm" in args and not args["tqdm"]:
+      minibatch_iter = train_loader
+    else:
+      minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
 
     # loop through minibatches
     for x_batch, y_batch in minibatch_iter:
@@ -234,16 +254,19 @@ def train_gp_ngd(train_dataset,num_inducing=128,
       hyperparameter_optimizer.zero_grad()
       output = model(x_batch,**kwargs)
       loss = -mll(output, y_batch)
-      epochs_iter.set_postfix(loss=loss.item())
+      if "tqdm" in args and args["tqdm"]:
+        epochs_iter.set_postfix(loss=loss.item())      
       loss.backward()
       variational_ngd_optimizer.step()
       hyperparameter_optimizer.step()
+    if i % 100 == 0:
+        print(f"Training epoch {i}, loss: {loss.item()}")
 
   print("\nDone Training!")
   return model,likelihood
 
 def train_gp_ciq(train_dataset,num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1):
+  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,**kwargs):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method using natrural gradient descent
 
@@ -267,7 +290,9 @@ def train_gp_ciq(train_dataset,num_inducing=128,
   # initialize model
   model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
-
+  # if torch.cuda.is_available():
+  #   model = model.cuda()
+  #   likelihood = likelihood.cuda()
   # training mode
   model.train()
   likelihood.train()
@@ -282,11 +307,18 @@ def train_gp_ciq(train_dataset,num_inducing=128,
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
 
   # train
-  epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
+  if "tqdm" in args and not args["tqdm"]:
+    epochs_iter = range(num_epochs)
+  else:
+    epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch",leave=False)
+
   for i in epochs_iter:
 
     # iterator for minibatches
-    minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
+    if "tqdm" in args and not args["tqdm"]:
+      minibatch_iter = train_loader
+    else:
+      minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch",leave=False)
 
     # loop through minibatches
     for x_batch, y_batch in minibatch_iter:
@@ -305,10 +337,13 @@ def train_gp_ciq(train_dataset,num_inducing=128,
       hyperparameter_optimizer.zero_grad()
       output = model(x_batch,**kwargs)
       loss = -mll(output, y_batch)
-      epochs_iter.set_postfix(loss=loss.item())
+      if "tqdm" in args and args["tqdm"]:
+        epochs_iter.set_postfix(loss=loss.item())      
       loss.backward()
       variational_ngd_optimizer.step()
       hyperparameter_optimizer.step()
+    if i % 100 == 0:
+        print(f"Training epoch {i}, loss: {loss.item()}")
 
   print("\nDone Training!")
   return model,likelihood
