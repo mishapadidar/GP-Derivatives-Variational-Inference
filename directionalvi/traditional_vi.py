@@ -6,11 +6,11 @@ import tqdm
 import math
 import time
 import torch
+import sys
 import gpytorch
 from matplotlib import pyplot as plt
 import numpy as np
-sys.path.append("../directionalvi/utils")
-from directionalvi.utils.metrics import MSE
+from utils.metrics import MSE
 
 
 class GPModel(ApproximateGP):
@@ -26,13 +26,12 @@ class GPModel(ApproximateGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-def train_gp(train_dataset,num_inducing=128,minibatch_size=1,num_epochs=1,**args):
-    if torch.cuda.is_available():
-        train_dataset = train_dataset.cuda()
+def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**args):
     train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+    n_samples = len(train_dataset)
     # setup model
-    inducing_points = train_x[:num_inducing, :]
-    # inducing_points = torch.rand(num_inducing,dim)
+    # inducing_points = train_x[:num_inducing, :]
+    inducing_points = torch.rand(num_inducing,dim)
     model = GPModel(inducing_points=inducing_points)
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
@@ -47,7 +46,7 @@ def train_gp(train_dataset,num_inducing=128,minibatch_size=1,num_epochs=1,**args
         {'params': likelihood.parameters()},], lr=0.01)
 
     # Our loss object. We're using the VariationalELBO
-    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=train_y.size(0))
+    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
         epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
@@ -80,8 +79,6 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
   
     dim = len(test_dataset[0][0])
     n_test = len(test_dataset)
-    if torch.cuda.is_available():
-        test_dataset = test_dataset.cuda()
     test_loader = DataLoader(test_dataset, batch_size=minibatch_size, shuffle=False)
     
     model.eval()
