@@ -119,7 +119,7 @@ def train_gp(train_dataset,num_inducing=128,
   num_epochs: int, number of epochs
   """
   assert num_directions == minibatch_dim
-
+  print_loss=True # if print loss every 100 epoch
   # set up the data loader
   train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
   dim = len(train_dataset[0][0])
@@ -152,6 +152,7 @@ def train_gp(train_dataset,num_inducing=128,
   for i in epochs_iter:
     # iterator for minibatches
     if "tqdm" in args and args["tqdm"]:
+      print_loss=False # don't print loss every 100 epoch if use tqdm
       minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
     else:
       minibatch_iter = train_loader
@@ -175,9 +176,10 @@ def train_gp(train_dataset,num_inducing=128,
         epochs_iter.set_postfix(loss=loss.item())    
       loss.backward()
       optimizer.step()
-    if i % 100 == 0:
+    if i % 100 == 0 and print_loss:
         print(f"Training epoch {i}, loss: {loss.item()}")
-  print(f"Training epoch {i}, loss: {loss.item()}")
+  if print_loss:
+    print(f"Training epoch {i}, loss: {loss.item()}")
 
   print("\nDone Training!")
   return model,likelihood
@@ -196,6 +198,7 @@ def train_gp_ngd(train_dataset,num_inducing=128,
                  the PR in GpyTorch.
   num_epochs: int, number of epochs
   """
+  print_loss=True # if print loss every 100 epoch
   assert num_directions == minibatch_dim
 
   # set up the data loader
@@ -207,9 +210,9 @@ def train_gp_ngd(train_dataset,num_inducing=128,
   # initialize model
   model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD")
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
-  # if torch.cuda.is_available():
-  #   model = model.cuda()
-  #   likelihood = likelihood.cuda()
+  if torch.cuda.is_available():
+    model = model.cuda()
+    likelihood = likelihood.cuda()
 
   # training mode
   model.train()
@@ -225,6 +228,7 @@ def train_gp_ngd(train_dataset,num_inducing=128,
 
   # train
   if "tqdm" in args and args["tqdm"]:
+    print_loss=False # don't print loss every 100 epoch if use tqdm
     epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
   else:
     epochs_iter = range(num_epochs)
@@ -257,9 +261,10 @@ def train_gp_ngd(train_dataset,num_inducing=128,
       loss.backward()
       variational_ngd_optimizer.step()
       hyperparameter_optimizer.step()
-    if i % 100 == 0:
+    if i % 100 == 0 and print_loss:
         print(f"Training epoch {i}, loss: {loss.item()}")
-
+  if print_loss:
+    print(f"Training epoch {i}, loss: {loss.item()}")
   print("\nDone Training!")
   return model,likelihood
 
@@ -277,6 +282,7 @@ def train_gp_ciq(train_dataset,num_inducing=128,
                  the PR in GpyTorch.
   num_epochs: int, number of epochs
   """
+  print_loss=True # if print loss every 100 epoch
   assert num_directions == minibatch_dim
 
   # set up the data loader
@@ -288,13 +294,12 @@ def train_gp_ciq(train_dataset,num_inducing=128,
   # initialize model
   model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
-  # if torch.cuda.is_available():
-  #   model = model.cuda()
-  #   likelihood = likelihood.cuda()
+  if torch.cuda.is_available():
+    model = model.cuda()
+    likelihood = likelihood.cuda()
   # training mode
   model.train()
   likelihood.train()
-
 
   variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=num_data, lr=0.1)
   hyperparameter_optimizer = torch.optim.Adam([
@@ -306,6 +311,7 @@ def train_gp_ciq(train_dataset,num_inducing=128,
 
   # train
   if "tqdm" in args and args["tqdm"]:
+    print_loss=False # don't print loss every 100 epoch if use tqdm
     epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
   else:
     epochs_iter = range(num_epochs)
@@ -339,9 +345,10 @@ def train_gp_ciq(train_dataset,num_inducing=128,
       loss.backward()
       variational_ngd_optimizer.step()
       hyperparameter_optimizer.step()
-    if i % 100 == 0:
+    if i % 100 == 0 and print_loss:
         print(f"Training epoch {i}, loss: {loss.item()}")
-
+  if print_loss:
+    print(f"Training epoch {i}, loss: {loss.item()}")
   print("\nDone Training!")
   return model,likelihood
 

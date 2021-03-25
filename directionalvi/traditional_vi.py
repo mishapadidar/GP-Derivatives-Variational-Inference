@@ -27,6 +27,8 @@ class GPModel(ApproximateGP):
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
 def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**args):
+    
+    print_loss=True
     train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
     n_samples = len(train_dataset)
     # setup model
@@ -49,6 +51,7 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
     mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
+        print_loss=False # don't print loss every 100 epoch if use tqdm
         epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
     else:
         epochs_iter = range(num_epochs)
@@ -68,8 +71,9 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
                 epochs_iter.set_postfix(loss=loss.item())           
             loss.backward()
             optimizer.step()
-        if i % 100 == 0:
+        if i % 100 == 0 and print_loss
             print(f"Training epoch {i}, loss: {loss.item()}")
+    if print_loss:
     print(f"Training epoch {i}, loss: {loss.item()}")
 
     print("\nDone Training!")
