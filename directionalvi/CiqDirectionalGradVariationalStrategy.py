@@ -215,24 +215,24 @@ class CiqDirectionalGradVariationalStrategy(_VariationalStrategy):
         full_inputs   = torch.cat([inducing_points,x],dim=-2)
         test_mean = self.model.mean_module(x.repeat_interleave(num_derivative_directions+1,dim=0))  
         #
-        kwargs['v1'] = inducing_directions
-        kwargs['v2'] = derivative_directions
+        kwargs['v1'] = inducing_directions.to(x.device)
+        kwargs['v2'] = derivative_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.covar_module(inducing_points,x, **kwargs)
         induc_data_covar  = full_output.evaluate()
-        kwargs['v1'] = derivative_directions
-        kwargs['v2'] = inducing_directions
+        kwargs['v1'] = derivative_directions.to(x.device)
+        kwargs['v2'] = inducing_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.covar_module(x,inducing_points, **kwargs)
         data_induc_covar = full_output.evaluate()
         #
-        kwargs['v1'] = inducing_directions
-        kwargs['v2'] = inducing_directions
+        kwargs['v1'] = inducing_directions.to(x.device)
+        kwargs['v2'] = inducing_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.forward(inducing_points, **kwargs)
         induc_induc_covar  = full_output.lazy_covariance_matrix.add_jitter()
-        kwargs['v1'] = derivative_directions
-        kwargs['v2'] = derivative_directions
+        kwargs['v1'] = derivative_directions.to(x.device)
+        kwargs['v2'] = derivative_directions.to(x.device)
         self.model.covar_module.base_kernel.set_num_directions(num_directions)
         full_output = self.model.forward(x, **kwargs)
         data_data_covar  = full_output.lazy_covariance_matrix
