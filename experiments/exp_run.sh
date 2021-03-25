@@ -5,7 +5,7 @@ n_train=600
 n_test=1000
 num_inducing=200
 num_directions=2
-num_epochs=10
+num_epochs=100
 batch_size=200
 model="DSVGP"
 

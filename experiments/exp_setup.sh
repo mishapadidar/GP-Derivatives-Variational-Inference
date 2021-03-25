@@ -16,4 +16,4 @@ python exp_script.py \
     --n_train ${n_train} --n_test ${n_test}\
     --num_inducing ${num_inducing} --num_directions ${num_directions}\
     --num_epochs ${num_epochs} --batch_size ${batch_size} --model ${model}\
-    2>&1 | tee logs/a.out_${test_fun}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epochs${num_epochs}_${variational_distribution}_${variational_strategy}
+    2>&1 | tee logs/a.out_${model}_${test_fun}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epochs${num_epochs}_${variational_distribution}_${variational_strategy}
