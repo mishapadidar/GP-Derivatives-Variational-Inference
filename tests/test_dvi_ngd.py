@@ -5,15 +5,16 @@ import gpytorch
 import tqdm
 import random
 import time
+import sys
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
-#import sys
-#sys.path.append("../")
-#sys.path.append("../utils")
-from directionalvi.RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
-from directionalvi.DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
-from directionalvi.directional_vi import train_gp, eval_gp, train_gp_ngd
-from directionalvi.utils.metrics import MSE
+sys.path.append("../")
+sys.path.append("../directionalvi/utils")
+sys.path.append("../directionalvi")
+from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
+from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
+from directional_vi import eval_gp, train_gp_ngd
+from utils.metrics import MSE
 import testfun
 
 # data parameters
