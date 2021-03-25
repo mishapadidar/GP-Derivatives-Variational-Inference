@@ -7,7 +7,7 @@ import pandas as pd
 class csv_dataset(Dataset):
     """Reads a CSV dataset on the fly
     """
-    def __init__(self,csv_file):
+    def __init__(self,csv_file,gradients=True):
       """
       Args:
       csv_file (string): csv file name containing data
@@ -28,6 +28,8 @@ class csv_dataset(Dataset):
       # bounds for rescaling
       self.lb = torch.tensor(self.df.iloc[:,self.xidx].min(axis=0).to_numpy()).float()
       self.ub = torch.tensor(self.df.iloc[:,self.xidx].max(axis=0).to_numpy()).float()
+      # gradients option
+      self.gradients = gradients
  
 
     def __len__(self):
@@ -45,8 +47,11 @@ class csv_dataset(Dataset):
       sample = self.df.iloc[idx].to_numpy()
       # return a tuple of tensors (x,[f(x),g(x)])
       x = torch.tensor(sample[self.xidx]).float() # x must be dtype float
-      y = torch.tensor(sample[self.fgidx])
-      # map x to unit cube
-      x = (x-self.lb)/(self.ub - self.lb)
+      if self.gradients:
+        y = torch.tensor(sample[self.fgidx])
+      else:
+        y = sample[self.fidx][0]
+      # map x to unit cube, and rescale g correspondingly
+      #x = (x-self.lb)/(self.ub - self.lb)
       return (x,y)
 
