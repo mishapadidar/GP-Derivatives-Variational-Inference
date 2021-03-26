@@ -109,14 +109,12 @@ def train_gp(train_dataset,num_inducing=128,
   if inducing_data_initialization is True:
     # initialize inducing points and directions from data
     inducing_points = torch.zeros(num_inducing,dim)
-    # inducing directions per point are [gradient,e_1,e_2,...]
+    # canonical directions
     inducing_directions = torch.eye(dim)[:num_directions] 
     inducing_directions = inducing_directions.repeat(num_inducing,1)
     for ii in range(num_inducing):
       inducing_points[ii] = train_dataset[ii][0]
-      inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
-    # normalize directions
-    inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+      #inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
   else:
     # random points on the unit cube
     inducing_points     = torch.rand(num_inducing, dim)
@@ -124,6 +122,10 @@ def train_gp(train_dataset,num_inducing=128,
     #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
     inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
     inducing_directions = inducing_directions.repeat(num_inducing,1)
+  if torch.cuda.is_available():
+    inducing_points = inducing_points.cuda()
+    inducing_directions = inducing_directions.cuda()
+
 
   # initialize model
   if use_ciq:
@@ -176,6 +178,9 @@ def train_gp(train_dataset,num_inducing=128,
     # loop through minibatches
     mini_steps = 0
     for x_batch, y_batch in minibatch_iter:
+      if torch.cuda.is_available():
+        x_batch = x_batch.cuda()
+        y_batch = y_batch.cuda()
 
       # select random columns of y_batch to train on
       y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
@@ -197,10 +202,12 @@ def train_gp(train_dataset,num_inducing=128,
       hyperparameter_optimizer.step()
 
       # print the loss
-      total_steps = (i*int(n_samples/minibatch_size) + mini_steps)
-      if total_steps  % 100 == 0 and print_loss:
-          print(f"Training step {total_steps}, loss: {loss.item()}")
+      if mini_steps % 10 == 0 and print_loss:
+        print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+
       mini_steps +=1
+      sys.stdout.flush()
+     
 
   if print_loss:
     print(f"Done! loss: {loss.item()}")
@@ -229,6 +236,9 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,
   variances = torch.tensor([0.])
   with torch.no_grad():
     for x_batch, y_batch in test_loader:
+        if torch.cuda.is_available():
+          x_batch = x_batch.cuda()
+          y_batch = y_batch.cuda()
         preds = model(x_batch,**kwargs)
         means = torch.cat([means, preds.mean.cpu()])
         variances = torch.cat([variances, preds.variance.cpu()])
