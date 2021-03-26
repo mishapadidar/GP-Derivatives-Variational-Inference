@@ -81,8 +81,11 @@ def select_cols_of_y(y_batch,minibatch_dim,dim):
 
 def train_gp(train_dataset,num_inducing=128,
   num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,
-  learning_rate_hypers=0.01,
-  inducing_data_initialization=True,**args):
+  learning_rate_hypers=0.01,learning_rate_ngd=0.1,
+  inducing_data_initialization=True,
+  use_ngd=False,
+  use_ciq=False,
+  **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
 
@@ -101,6 +104,7 @@ def train_gp(train_dataset,num_inducing=128,
   train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
   dim = len(train_dataset[0][0])
   n_samples = len(train_dataset)
+  num_data = (dim+1)*n_samples
 
   if inducing_data_initialization is True:
     # initialize inducing points and directions from data
@@ -122,7 +126,12 @@ def train_gp(train_dataset,num_inducing=128,
     inducing_directions = inducing_directions.repeat(num_inducing,1)
 
   # initialize model
-  model = GPModel(inducing_points,inducing_directions,dim)
+  if use_ciq:
+    model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
+  elif use_ngd:
+    model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
+  else:
+    model = GPModel(inducing_points,inducing_directions,dim)
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
   if torch.cuda.is_available():
     model = model.cuda()
@@ -131,12 +140,23 @@ def train_gp(train_dataset,num_inducing=128,
   model.train()
   likelihood.train()
 
-  optimizer = torch.optim.Adam([
-      {'params': model.parameters()},
-      {'params': likelihood.parameters()},
-  ], lr=learning_rate_hypers)
+  # optimizers
+  if use_ngd or use_ciq:
+    variational_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=num_data, lr=learning_rate_ngd)
+    hyperparameter_optimizer = torch.optim.Adam([
+        {'params': model.hyperparameters()},
+        {'params': likelihood.parameters()},
+    ], lr=learning_rate_hypers)
+  else:
+    variational_optimizer = torch.optim.Adam([
+        {'params': model.variational_parameters()},
+    ], lr=learning_rate_hypers)
+    hyperparameter_optimizer = torch.optim.Adam([
+        {'params': model.hyperparameters()},
+        {'params': likelihood.parameters()},
+    ], lr=learning_rate_hypers)
 
-  num_data = (dim+1)*n_samples
+  # mll
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
 
   # train
@@ -166,13 +186,15 @@ def train_gp(train_dataset,num_inducing=128,
       # pass in interleaved data... so kernel should also interleave
       y_batch = y_batch.reshape(torch.numel(y_batch))
 
-      optimizer.zero_grad()
+      variational_optimizer.zero_grad()
+      hyperparameter_optimizer.zero_grad()
       output = model(x_batch,**kwargs)
-      loss   = -mll(output, y_batch)
+      loss = -mll(output, y_batch)
       if "tqdm" in args and args["tqdm"]:
-        epochs_iter.set_postfix(loss=loss.item())    
+        epochs_iter.set_postfix(loss=loss.item())     
       loss.backward()
-      optimizer.step()
+      variational_optimizer.step()
+      hyperparameter_optimizer.step()
 
       # print the loss
       total_steps = (i*int(n_samples/minibatch_size) + mini_steps)
@@ -186,216 +208,6 @@ def train_gp(train_dataset,num_inducing=128,
   print("\nDone Training!")
   return model,likelihood
 
-def train_gp_ngd(train_dataset,num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,
-  learning_rate_hypers=0.01,learning_rate_ngd=0.1,
-  inducing_data_initialization=True,**args):
-  """Train a Derivative GP with the Directional Derivative
-  Variational Inference method using natrural gradient descent
-
-  train_dataset: torch Dataset
-  num_inducing: int, number of inducing points
-  num_directions: int, number of inducing directions (per inducing point)
-  minbatch_size: int, number of data points in a minibatch
-  minibatch_dim: int, number of derivative per point in minibatch training
-                 WARNING: This must equal num_directions until we complete
-                 the PR in GpyTorch.
-  num_epochs: int, number of epochs
-  """
-  print_loss=True # if print loss every 100 epoch
-  assert num_directions == minibatch_dim
-
-  # set up the data loader
-  train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
-  dim = len(train_dataset[0][0])
-  n_samples = len(train_dataset)
-  num_data = (dim+1)*n_samples
-
-  if inducing_data_initialization is True:
-    # initialize inducing points and directions from data
-    inducing_points = torch.zeros(num_inducing,dim)
-    # inducing directions per point are [gradient,e_1,e_2,...]
-    inducing_directions = torch.eye(dim)[:num_directions] 
-    inducing_directions = inducing_directions.repeat(num_inducing,1)
-    for ii in range(num_inducing):
-      inducing_points[ii] = train_dataset[ii][0]
-      inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
-    # normalize directions
-    inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
-  else:
-    # random points on the unit cube
-    inducing_points     = torch.rand(num_inducing, dim)
-    #inducing_directions = torch.rand(num_inducing*num_directions,dim)
-    #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
-    inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
-    inducing_directions = inducing_directions.repeat(num_inducing,1)
-
-  # initialize model
-  model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
-  likelihood = gpytorch.likelihoods.GaussianLikelihood()
-  if torch.cuda.is_available():
-    model = model.cuda()
-    likelihood = likelihood.cuda()
-
-  # training mode
-  model.train()
-  likelihood.train()
-  
-  variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=num_data, lr=learning_rate_ngd)
-  hyperparameter_optimizer = torch.optim.Adam([
-      {'params': model.hyperparameters()},
-      {'params': likelihood.parameters()},
-  ], lr=learning_rate_hypers)
-
-  mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
-
-  # train
-  if "tqdm" in args and args["tqdm"]:
-    print_loss=False # don't print loss every 100 epoch if use tqdm
-    epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
-  else:
-    epochs_iter = range(num_epochs)
-
-  for i in epochs_iter:
-    # iterator for minibatches
-    if "tqdm" in args and args["tqdm"]:
-      minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
-    else:
-      minibatch_iter = train_loader
-    # loop through minibatches
-    for x_batch, y_batch in minibatch_iter:
-
-      # select random columns of y_batch to train on
-      y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
-      kwargs = {}
-      # repeat the derivative directions for each point in x_batch
-      kwargs['derivative_directions'] = derivative_directions.repeat(y_batch.size(0),1)
-
-      # pass in interleaved data... so kernel should also interleave
-      y_batch = y_batch.reshape(torch.numel(y_batch))
-      # x_batch = x_batch.repeat_interleave(minibatch_dim+1,dim=0)
-
-      variational_ngd_optimizer.zero_grad()
-      hyperparameter_optimizer.zero_grad()
-      output = model(x_batch,**kwargs)
-      loss = -mll(output, y_batch)
-      if "tqdm" in args and args["tqdm"]:
-        epochs_iter.set_postfix(loss=loss.item())     
-      loss.backward()
-      variational_ngd_optimizer.step()
-      hyperparameter_optimizer.step()
-    if i % 100 == 0 and print_loss:
-        print(f"Training epoch {i}, loss: {loss.item()}")
-  if print_loss:
-    print(f"Training epoch {i}, loss: {loss.item()}")
-  print("\nDone Training!")
-  return model,likelihood
-
-def train_gp_ciq(train_dataset,num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,
-  learning_rate_hypers=0.01,learning_rate_ngd=0.1,
-  inducing_data_initialization=True,**args):
-  """Train a Derivative GP with the Directional Derivative
-  Variational Inference method using natrural gradient descent
-
-  train_dataset: torch Dataset
-  num_inducing: int, number of inducing points
-  num_directions: int, number of inducing directions (per inducing point)
-  minbatch_size: int, number of data points in a minibatch
-  minibatch_dim: int, number of derivative per point in minibatch training
-                 WARNING: This must equal num_directions until we complete
-                 the PR in GpyTorch.
-  num_epochs: int, number of epochs
-  """
-  print_loss=True # if print loss every 100 epoch
-  assert num_directions == minibatch_dim
-
-  # set up the data loader
-  train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
-  dim = len(train_dataset[0][0])
-  n_samples = len(train_dataset)
-  num_data = (dim+1)*n_samples
-
-  # initialize inducing points
-  if inducing_data_initialization is True:
-    # initialize inducing points and directions from data
-    inducing_points = torch.zeros(num_inducing,dim)
-    # inducing directions per point are [gradient,e_1,e_2,...]
-    inducing_directions = torch.eye(dim)[:num_directions] 
-    inducing_directions = inducing_directions.repeat(num_inducing,1)
-    for ii in range(num_inducing):
-      inducing_points[ii] = train_dataset[ii][0]
-      inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
-    # normalize directions
-    inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
-  else:
-    # random points on the unit cube
-    inducing_points     = torch.rand(num_inducing, dim)
-    #inducing_directions = torch.rand(num_inducing*num_directions,dim)
-    #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
-    inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
-    inducing_directions = inducing_directions.repeat(num_inducing,1)
-
-  # initialize model
-  model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
-  likelihood = gpytorch.likelihoods.GaussianLikelihood()
-  if torch.cuda.is_available():
-    model = model.cuda()
-    likelihood = likelihood.cuda()
-  # training mode
-  model.train()
-  likelihood.train()
-
-  variational_ngd_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=num_data, lr=learning_rate_ngd)
-  hyperparameter_optimizer = torch.optim.Adam([
-      {'params': model.hyperparameters()},
-      {'params': likelihood.parameters()},
-  ], lr=learning_rate_hypers)
-
-  mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
-
-  # train
-  if "tqdm" in args and args["tqdm"]:
-    print_loss=False # don't print loss every 100 epoch if use tqdm
-    epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
-  else:
-    epochs_iter = range(num_epochs)
-    
-  for i in epochs_iter:
-
-    # iterator for minibatches
-    if "tqdm" in args and args["tqdm"]:
-      minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
-    else:
-      minibatch_iter = train_loader
-    # loop through minibatches
-    for x_batch, y_batch in minibatch_iter:
-
-      # select random columns of y_batch to train on
-      y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
-      kwargs = {}
-      # repeat the derivative directions for each point in x_batch
-      kwargs['derivative_directions'] = derivative_directions.repeat(y_batch.size(0),1)
-
-      # pass in interleaved data... so kernel should also interleave
-      y_batch = y_batch.reshape(torch.numel(y_batch))
-      # x_batch = x_batch.repeat_interleave(minibatch_dim+1,dim=0)
-
-      variational_ngd_optimizer.zero_grad()
-      hyperparameter_optimizer.zero_grad()
-      output = model(x_batch,**kwargs)
-      loss = -mll(output, y_batch)
-      if "tqdm" in args and args["tqdm"]:
-        epochs_iter.set_postfix(loss=loss.item())     
-      loss.backward()
-      variational_ngd_optimizer.step()
-      hyperparameter_optimizer.step()
-    if i % 100 == 0 and print_loss:
-        print(f"Training epoch {i}, loss: {loss.item()}")
-  if print_loss:
-    print(f"Training epoch {i}, loss: {loss.item()}")
-  print("\nDone Training!")
-  return model,likelihood
 
 def eval_gp(test_dataset,model,likelihood, num_inducing=128,
   num_directions=1,minibatch_size=1,minibatch_dim =1):
