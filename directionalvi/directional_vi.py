@@ -85,6 +85,7 @@ def train_gp(train_dataset,num_inducing=128,
   inducing_data_initialization=True,
   use_ngd=False,
   use_ciq=False,
+  lr_sched=None,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -97,6 +98,18 @@ def train_gp(train_dataset,num_inducing=128,
                  WARNING: This must equal num_directions until we complete
                  the PR in GpyTorch.
   num_epochs: int, number of epochs
+  inducing_data_initialization: initialize the inducing points as a set of 
+      data points. If False, the inducing points are generated on the unit cube
+      uniformly, U[0,1]^d.
+  learning_rate_hypers, float: initial learning rate for the hyper optimizer
+  learning_rate_ngd, float: initial learning rate for the variational optimizer
+  use_ngd, bool: use NGD
+  use_ciq, bool: use CIQ
+  lr_sched, function handle: used in the torch LambdaLR learning rate scheduler. At
+      each iteration the initial learning rate is multiplied by the result of 
+      this function. The function input is the epoch, i.e. lr_sched(epoch). 
+      The function should return a single number. If lr_sched is left as None, 
+      the learning rate will be held constant.
   """
   assert num_directions == minibatch_dim
 
@@ -157,6 +170,13 @@ def train_gp(train_dataset,num_inducing=128,
         {'params': model.hyperparameters()},
         {'params': likelihood.parameters()},
     ], lr=learning_rate_hypers)
+  
+  # learning rate scheduler
+  #lambda1 = lambda epoch: 1.0/(1 + epoch)
+  if lr_sched is None:
+    lr_sched = lambda epoch: 1.0
+  hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
+  variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
 
   # mll
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
@@ -198,8 +218,11 @@ def train_gp(train_dataset,num_inducing=128,
       if "tqdm" in args and args["tqdm"]:
         epochs_iter.set_postfix(loss=loss.item())     
       loss.backward()
+      # step optimizers and learning rate schedulers
       variational_optimizer.step()
+      variational_scheduler.step()
       hyperparameter_optimizer.step()
+      hyperparameter_scheduler.step()
 
       # print the loss
       if mini_steps % 10 == 0 and print_loss:
