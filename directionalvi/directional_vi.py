@@ -188,7 +188,8 @@ def train_gp(train_dataset,num_inducing=128,
 
 def train_gp_ngd(train_dataset,num_inducing=128,
   num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,
-  learning_rate_hypers=0.01,learning_rate_ngd=0.1,**args):
+  learning_rate_hypers=0.01,learning_rate_ngd=0.1,
+  inducing_data_initialization=True,**args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method using natrural gradient descent
 
@@ -210,8 +211,27 @@ def train_gp_ngd(train_dataset,num_inducing=128,
   n_samples = len(train_dataset)
   num_data = (dim+1)*n_samples
 
+  if inducing_data_initialization is True:
+    # initialize inducing points and directions from data
+    inducing_points = torch.zeros(num_inducing,dim)
+    # inducing directions per point are [gradient,e_1,e_2,...]
+    inducing_directions = torch.eye(dim)[:num_directions] 
+    inducing_directions = inducing_directions.repeat(num_inducing,1)
+    for ii in range(num_inducing):
+      inducing_points[ii] = train_dataset[ii][0]
+      inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
+    # normalize directions
+    inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+  else:
+    # random points on the unit cube
+    inducing_points     = torch.rand(num_inducing, dim)
+    #inducing_directions = torch.rand(num_inducing*num_directions,dim)
+    #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+    inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
+    inducing_directions = inducing_directions.repeat(num_inducing,1)
+
   # initialize model
-  model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD")
+  model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
   if torch.cuda.is_available():
     model = model.cuda()
@@ -272,8 +292,9 @@ def train_gp_ngd(train_dataset,num_inducing=128,
   return model,likelihood
 
 def train_gp_ciq(train_dataset,num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,learning_rate_hypers=0.01,
-  learning_rate_ngd=0.1,**args):
+  num_directions=1,minibatch_size=1,minibatch_dim =1,num_epochs=1,
+  learning_rate_hypers=0.01,learning_rate_ngd=0.1,
+  inducing_data_initialization=True,**args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method using natrural gradient descent
 
@@ -295,8 +316,28 @@ def train_gp_ciq(train_dataset,num_inducing=128,
   n_samples = len(train_dataset)
   num_data = (dim+1)*n_samples
 
+  # initialize inducing points
+  if inducing_data_initialization is True:
+    # initialize inducing points and directions from data
+    inducing_points = torch.zeros(num_inducing,dim)
+    # inducing directions per point are [gradient,e_1,e_2,...]
+    inducing_directions = torch.eye(dim)[:num_directions] 
+    inducing_directions = inducing_directions.repeat(num_inducing,1)
+    for ii in range(num_inducing):
+      inducing_points[ii] = train_dataset[ii][0]
+      inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
+    # normalize directions
+    inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+  else:
+    # random points on the unit cube
+    inducing_points     = torch.rand(num_inducing, dim)
+    #inducing_directions = torch.rand(num_inducing*num_directions,dim)
+    #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+    inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
+    inducing_directions = inducing_directions.repeat(num_inducing,1)
+
   # initialize model
-  model = GPModel(num_inducing,num_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
+  model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
   if torch.cuda.is_available():
     model = model.cuda()
