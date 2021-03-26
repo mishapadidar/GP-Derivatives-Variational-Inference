@@ -32,6 +32,9 @@ class csv_dataset(Dataset):
       # bounds for rescaling
       self.lb = torch.tensor(self.df.iloc[:,self.xidx].min(axis=0).to_numpy()).float()
       self.ub = torch.tensor(self.df.iloc[:,self.xidx].max(axis=0).to_numpy()).float()
+      # mean and std of f
+      self.favg = self.df.iloc[:,self.fidx].mean().to_numpy()[0]
+      self.fstd = self.df.iloc[:,self.fidx].std().to_numpy()[0]
  
 
     def __len__(self):
@@ -54,8 +57,11 @@ class csv_dataset(Dataset):
       else:
         y = sample[self.fidx][0]
       if self.rescale:
-        # map x to unit cube, and rescale g correspondingly
+        # map x to unit cube
         x = (x-self.lb)/(self.ub - self.lb)
-        y[1:] =y[1:]*(self.ub - self.lb)
+        # standardize function values (f-mu)/sigma
+        y[0] = (y[0] - self.favg)/self.fstd
+        # scale gradients appropriately
+        y[1:] =y[1:]*(self.ub - self.lb)/self.fstd
       return (x,y)
 
