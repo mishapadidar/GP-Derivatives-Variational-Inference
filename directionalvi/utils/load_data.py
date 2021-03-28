@@ -13,14 +13,15 @@ def load_synthetic_data(test_fun, n, **kwargs):
         y: torch tensor, normalized and rescaled labels (w/ or w/o derivatives)
     '''
     torch.random.manual_seed(kwargs["seed"])
+    dim = test_fun.dim
     x_unit = torch.rand(n,dim)
     # evaluate in the true range
-    lb, ub = testfun.get_bounds()
+    lb, ub = test_fun.get_bounds()
     x = from_unit_cube(x_unit, lb, ub)
     if kwargs["derivative"]:
-        y = testfun.evaluate_true_with_deriv(train_x)
+        y = test_fun.evaluate_true_with_deriv(x)
     else:
-        y = testfun.evaluate_true(train_x)
+        y = test_fun.evaluate_true(x)
     # normalize y values
     normalize(y, **kwargs)
     if kwargs["derivative"]:
