@@ -17,7 +17,7 @@ from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrateg
 from directional_vi import *
 import traditional_vi
 from load_data import *
-from metrics import MSE
+from metrics import *
 from synthetic_functions import *
 
 
@@ -96,6 +96,7 @@ def main(**args):
                                 num_epochs=num_epochs,
                                 tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd
                                 )
+    torch.cuda.current_stream().synchronize()
     t2 = time.time()	
 
     # save the model
@@ -109,6 +110,7 @@ def main(**args):
                                                   minibatch_size=n_test)
         # metrics
         test_mse = MSE(test_y.cpu(),means)
+        test_rmse = RMSE(test_y.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
@@ -118,11 +120,13 @@ def main(**args):
                                     minibatch_dim=num_directions)
         # compute MSE
         test_mse = MSE(test_y.cpu()[:,0],means[::num_directions+1])
+        test_rmse = RMSE(test_y.cpu()[:,0],means[::num_directions+1])
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
+    torch.cuda.current_stream().synchronize()
     t3 = time.time()	
-    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
+    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}.")
     print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
 

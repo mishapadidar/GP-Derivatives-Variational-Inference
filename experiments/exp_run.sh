@@ -1,11 +1,11 @@
 dataset="synthetic-Branin" # synthetic/real - dataset name 
 
 # exp setups
-n_train=600
-n_test=1000
-num_inducing=20
+n_train=4000
+n_test=10000
+num_inducing=200
 num_directions=2
-num_epochs=1000
+num_epochs=100
 batch_size=200
 
 # compare different methods, comment out the chunk if not comparing with this method
