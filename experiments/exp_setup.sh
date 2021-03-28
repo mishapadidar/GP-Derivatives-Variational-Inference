@@ -1,5 +1,4 @@
-test_fun=${1}
-# dataset=${1}
+dataset=${1}
 variational_strategy=${2}
 variational_distribution=${3}
 n_train=${4}
@@ -17,7 +16,7 @@ then
 fi
 
 python exp_script.py \
-    --test_fun ${test_fun} --variational_strategy ${variational_strategy}\
+    --dataset ${dataset} --variational_strategy ${variational_strategy}\
     --variational_distribution ${variational_distribution} \
     --n_train ${n_train} --n_test ${n_test}\
     --num_inducing ${num_inducing} --num_directions ${num_directions}\
