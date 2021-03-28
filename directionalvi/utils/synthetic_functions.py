@@ -1,5 +1,6 @@
 import math
 import torch
+import numpy as np
 from botorch.test_functions.base import BaseTestProblem
 from botorch.test_functions.synthetic import Branin
 from torch import Tensor
@@ -29,3 +30,8 @@ class Branin_with_deriv(Branin):
         grad_x1 = grad_x1.unsqueeze(-1)
         grad_x2 = grad_x2.unsqueeze(-1)
         return torch.cat([val, grad_x1, grad_x2], 1)
+
+    def get_bounds(self):
+        lb = np.array([item[0] for item in self._bounds])
+        ub = np.array([item[1] for item in self._bounds])
+        return lb, ub
