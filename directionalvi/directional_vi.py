@@ -231,7 +231,6 @@ def train_gp(train_dataset,num_inducing=128,
       mini_steps +=1
       sys.stdout.flush()
      
-
   if print_loss:
     print(f"Done! loss: {loss.item()}")
 

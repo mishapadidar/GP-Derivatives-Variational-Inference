@@ -42,7 +42,7 @@ def main(**args):
         args["derivative"]=True
         expname_train = f"DSVGP_{dataset_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_seed{args['seed']}"
     expname_test = f"{expname_train}_ntest{n_test}"
-    print(f"\nStart Experiment: {expname_test}")
+    print(f"\n\n\nStart Experiment: {expname_test}")
 
     # generate training data, x in unit cube, y normalized, derivative rescaled
     if dataset_type=="synthetic":
@@ -68,16 +68,16 @@ def main(**args):
 
     # train
     if args["model"]=="SVGP":
-        print("\n\n---Traditional SVGP---")
+        print("\n---Traditional SVGP---")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points")
     elif args["model"]=="DSVGP":
-        print("\n\n---D-SVGP---")
+        print("\n---D-SVGP---")
         print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-    t1 = time.time()	
+    t1 = time.perf_counter()	
 
     if args["model"]=="SVGP":
         model,likelihood = traditional_vi.train_gp(train_dataset,dim,
@@ -97,7 +97,7 @@ def main(**args):
                                 tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd
                                 )
     torch.cuda.current_stream().synchronize()
-    t2 = time.time()	
+    t2 = time.perf_counter()	
 
     # save the model
     if args["save_model"]:
@@ -114,7 +114,6 @@ def main(**args):
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
-                                    num_inducing=num_inducing,
                                     num_directions=num_directions,
                                     minibatch_size=n_test,
                                     minibatch_dim=num_directions)
@@ -125,7 +124,7 @@ def main(**args):
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
     torch.cuda.current_stream().synchronize()
-    t3 = time.time()	
+    t3 = time.perf_counter()	
     print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}.")
     print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
