@@ -7,7 +7,7 @@ import pandas as pd
 class csv_dataset(Dataset):
     """Reads a CSV dataset on the fly
     """
-    def __init__(self,csv_file,gradients=True):
+    def __init__(self,csv_file,gradients=True,rescale=False):
       """
       Args:
       csv_file (string): csv file name containing data
@@ -25,11 +25,16 @@ class csv_dataset(Dataset):
       self.gidx  = np.where(['g' in ci for ci in self.df.columns])[0]
       # combined f and g indexes with f first
       self.fgidx = np.concatenate((self.fidx,self.gidx))
+      # gradients option
+      self.gradients = gradients
+      # map to unit cube
+      self.rescale = rescale
       # bounds for rescaling
       self.lb = torch.tensor(self.df.iloc[:,self.xidx].min(axis=0).to_numpy()).float()
       self.ub = torch.tensor(self.df.iloc[:,self.xidx].max(axis=0).to_numpy()).float()
-      # gradients option
-      self.gradients = gradients
+      # mean and std of f
+      self.favg = self.df.iloc[:,self.fidx].mean().to_numpy()[0]
+      self.fstd = self.df.iloc[:,self.fidx].std().to_numpy()[0]
  
 
     def __len__(self):
@@ -51,7 +56,12 @@ class csv_dataset(Dataset):
         y = torch.tensor(sample[self.fgidx])
       else:
         y = sample[self.fidx][0]
-      # map x to unit cube, and rescale g correspondingly
-      #x = (x-self.lb)/(self.ub - self.lb)
+      if self.rescale:
+        # map x to unit cube
+        x = (x-self.lb)/(self.ub - self.lb)
+        # standardize function values (f-mu)/sigma
+        y[0] = (y[0] - self.favg)/self.fstd
+        # scale gradients appropriately
+        y[1:] =y[1:]*(self.ub - self.lb)/self.fstd
       return (x,y)
 

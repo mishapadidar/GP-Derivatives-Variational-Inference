@@ -85,6 +85,7 @@ def train_gp(train_dataset,num_inducing=128,
   inducing_data_initialization=True,
   use_ngd=False,
   use_ciq=False,
+  lr_sched=None,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -97,6 +98,18 @@ def train_gp(train_dataset,num_inducing=128,
                  WARNING: This must equal num_directions until we complete
                  the PR in GpyTorch.
   num_epochs: int, number of epochs
+  inducing_data_initialization: initialize the inducing points as a set of 
+      data points. If False, the inducing points are generated on the unit cube
+      uniformly, U[0,1]^d.
+  learning_rate_hypers, float: initial learning rate for the hyper optimizer
+  learning_rate_ngd, float: initial learning rate for the variational optimizer
+  use_ngd, bool: use NGD
+  use_ciq, bool: use CIQ
+  lr_sched, function handle: used in the torch LambdaLR learning rate scheduler. At
+      each iteration the initial learning rate is multiplied by the result of 
+      this function. The function input is the epoch, i.e. lr_sched(epoch). 
+      The function should return a single number. If lr_sched is left as None, 
+      the learning rate will be held constant.
   """
   assert num_directions == minibatch_dim
 
@@ -109,14 +122,12 @@ def train_gp(train_dataset,num_inducing=128,
   if inducing_data_initialization is True:
     # initialize inducing points and directions from data
     inducing_points = torch.zeros(num_inducing,dim)
-    # inducing directions per point are [gradient,e_1,e_2,...]
+    # canonical directions
     inducing_directions = torch.eye(dim)[:num_directions] 
     inducing_directions = inducing_directions.repeat(num_inducing,1)
     for ii in range(num_inducing):
       inducing_points[ii] = train_dataset[ii][0]
-      inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
-    # normalize directions
-    inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
+      #inducing_directions[ii*num_directions] = train_dataset[ii][1][1:] # gradient
   else:
     # random points on the unit cube
     inducing_points     = torch.rand(num_inducing, dim)
@@ -124,6 +135,10 @@ def train_gp(train_dataset,num_inducing=128,
     #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
     inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
     inducing_directions = inducing_directions.repeat(num_inducing,1)
+  if torch.cuda.is_available():
+    inducing_points = inducing_points.cuda()
+    inducing_directions = inducing_directions.cuda()
+
 
   # initialize model
   if use_ciq:
@@ -155,6 +170,13 @@ def train_gp(train_dataset,num_inducing=128,
         {'params': model.hyperparameters()},
         {'params': likelihood.parameters()},
     ], lr=learning_rate_hypers)
+  
+  # learning rate scheduler
+  #lambda1 = lambda epoch: 1.0/(1 + epoch)
+  if lr_sched is None:
+    lr_sched = lambda epoch: 1.0
+  hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
+  variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
 
   # mll
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
@@ -176,6 +198,9 @@ def train_gp(train_dataset,num_inducing=128,
     # loop through minibatches
     mini_steps = 0
     for x_batch, y_batch in minibatch_iter:
+      if torch.cuda.is_available():
+        x_batch = x_batch.cuda()
+        y_batch = y_batch.cuda()
 
       # select random columns of y_batch to train on
       y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
@@ -193,14 +218,19 @@ def train_gp(train_dataset,num_inducing=128,
       if "tqdm" in args and args["tqdm"]:
         epochs_iter.set_postfix(loss=loss.item())     
       loss.backward()
+      # step optimizers and learning rate schedulers
       variational_optimizer.step()
+      variational_scheduler.step()
       hyperparameter_optimizer.step()
+      hyperparameter_scheduler.step()
 
       # print the loss
-      total_steps = (i*int(n_samples/minibatch_size) + mini_steps)
-      if total_steps  % 100 == 0 and print_loss:
-          print(f"Training step {total_steps}, loss: {loss.item()}")
+      if mini_steps % 10 == 0 and print_loss:
+        print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+
       mini_steps +=1
+      sys.stdout.flush()
+     
 
   if print_loss:
     print(f"Done! loss: {loss.item()}")
@@ -209,8 +239,7 @@ def train_gp(train_dataset,num_inducing=128,
   return model,likelihood
 
 
-def eval_gp(test_dataset,model,likelihood, num_inducing=128,
-  num_directions=1,minibatch_size=1,minibatch_dim =1):
+def eval_gp(test_dataset,model,likelihood,num_directions=1,minibatch_size=1,minibatch_dim =1):
   
   assert num_directions == minibatch_dim
 
@@ -222,16 +251,21 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,
   likelihood.eval()
   
   kwargs = {}
-  derivative_directions = torch.eye(dim)[:num_directions]
-  derivative_directions = derivative_directions.repeat(n_test,1)
-  kwargs['derivative_directions'] = derivative_directions
   means = torch.tensor([0.])
   variances = torch.tensor([0.])
   with torch.no_grad():
     for x_batch, y_batch in test_loader:
-        preds = model(x_batch,**kwargs)
-        means = torch.cat([means, preds.mean.cpu()])
-        variances = torch.cat([variances, preds.variance.cpu()])
+      if torch.cuda.is_available():
+        x_batch = x_batch.cuda()
+        y_batch = y_batch.cuda()
+      # redo derivative directions b/c batch size is not consistent
+      derivative_directions = torch.eye(dim)[:num_directions]
+      derivative_directions = derivative_directions.repeat(len(x_batch),1)
+      kwargs['derivative_directions'] = derivative_directions
+      # predict
+      preds = model(x_batch,**kwargs)
+      means = torch.cat([means, preds.mean.cpu()])
+      variances = torch.cat([variances, preds.variance.cpu()])
 
   means = means[1:]
   variances = variances[1:]
@@ -240,86 +274,3 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,
 
   return means, variances
 
-if __name__ == "__main__":
-  
-  torch.random.manual_seed(0)
-  n   = 600
-  dim = 2
-  n_test = 10
-  num_directions = dim
-  num_inducing = 20
-  minibatch_size = 200
-  num_epochs = 10
-
-  # trainig and testing data
-  train_x = torch.rand(n,dim)
-  test_x = torch.rand(n_test,dim)
-  train_y = testfun.f(train_x, deriv=False)
-  test_y = testfun.f(test_x, deriv=False)
-  if torch.cuda.is_available():
-      train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
-
-  train_dataset = TensorDataset(train_x, train_y)
-  test_dataset = TensorDataset(test_x, test_y)
-  train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
-  test_loader = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
-
-  # train
-  model,likelihood = train_gp(train_dataset,
-                              num_inducing=num_inducing,
-                              num_directions=num_directions,
-                              minibatch_size=minibatch_size,
-                              minibatch_dim=num_directions,
-                              num_epochs=num_epochs, tqdm=True)
-
-  # test
-  means, variances = eval_gp( test_dataset,model,likelihood,
-                                                  num_inducing=num_inducing,
-                                                  num_directions=num_directions,
-                                                  minibatch_size=n_test,
-                                                  minibatch_dim=num_directions)
-  
-  # compute MSE
-  test_y = test_y.cpu()
-  test_mse = MSE(test_y[:,0].cpu,means[::num_directions+1])
-  # compute mean negative predictive density
-  test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y[:,0]).mean()
-  print(f"Testing MSE: {test_mse:.4e}, nll: {test_nll:.4e}")
-
-  # plot! 
-  # call some plot util functions here
-
-
-  # import matplotlib.pyplot as plt
-  # pred_f  = preds[::dim+1]
-  # pred_df = preds[1::dim+1]
-  # plt.plot(train_x.flatten(),train_y.flatten()[::dim+1],'r-',linewidth=2,label='true f(x)')
-  # plt.plot(train_x.flatten(),pred_f.detach().numpy(),'b-',linewidth=2,label='variational f(x)')
-  # plt.plot(train_x.flatten(),train_y.flatten()[1::dim+1],'r--',linewidth=2,label='true df/dx')
-  # plt.plot(train_x.flatten(),pred_df.detach().numpy(),'b--',linewidth=2,label='variational df/dx')
-  # plt.legend()
-  # plt.tight_layout()
-  # plt.title("Variational GP Predictions with Learned Derivatives")
-  # plt.show()
-
-
-  # from mpl_toolkits.mplot3d import axes3d
-  # import matplotlib.pyplot as plt
-  # fig = plt.figure(figsize=(12,6))
-  # ax = fig.add_subplot(111, projection='3d')
-  # ax.scatter(train_x[:,0],train_x[:,1],train_y[:,0], color='k')
-  # ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[::num_directions+1], color='b')
-  # plt.title("f(x,y) variational fit; actual curve is black, variational is blue")
-  # plt.show()
-  # fig = plt.figure(figsize=(12,6))
-  # ax = fig.add_subplot(111, projection='3d')
-  # ax.scatter(train_x[:,0],train_x[:,1],train_y[:,1], color='k')
-  # ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[1::num_directions+1], color='b')
-  # plt.title("df/dx variational fit; actual curve is black, variational is blue")
-  # plt.show()
-  # fig = plt.figure(figsize=(12,6))
-  # ax = fig.add_subplot(111, projection='3d')
-  # ax.scatter(train_x[:,0],train_x[:,1],train_y[:,2], color='k')
-  # ax.scatter(train_x[:,0],train_x[:,1],preds.detach().numpy()[2::dim+1], color='b')
-  # plt.title("df/dy variational fit; actual curve is black, variational is blue")
-  # plt.show()
