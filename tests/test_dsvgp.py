@@ -36,7 +36,8 @@ tqdm = False
 inducing_data_initialization = False
 # use natural gradients and/or CIQ
 use_ngd = False 
-use_ciq = False 
+use_ciq = False
+num_contour_quadrature=15
 # learning rate
 learning_rate_hypers = 0.01
 learning_rate_ngd    = 0.1
@@ -73,6 +74,7 @@ model,likelihood = train_gp(train_dataset,
                       use_ngd = use_ngd,
                       use_ciq = use_ciq,
                       lr_sched=lr_sched,
+                      num_contour_quadrature=num_contour_quadrature,
                       tqdm=tqdm,
                       )
 t2 = time.time()	

@@ -86,6 +86,7 @@ def train_gp(train_dataset,num_inducing=128,
   use_ngd=False,
   use_ciq=False,
   lr_sched=None,
+  num_contour_quadrature=15,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -142,6 +143,7 @@ def train_gp(train_dataset,num_inducing=128,
 
   # initialize model
   if use_ciq:
+    gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
     model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
   elif use_ngd:
     model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
