@@ -6,7 +6,7 @@ def load_synthetic_data(test_fun, n, **kwargs):
     '''
     load synthetic data 
     Input: 
-        test_fun: a modified Botorch test functions
+        test_fun: a modified Botorch test function
         n: number of datapoints
     Output: 
         x: torch tensor, random data from unit cube
