@@ -30,14 +30,18 @@ num_epochs = 100
 
 # seed
 torch.random.manual_seed(0)
+# use tqdm or just have print statements
 tqdm = False
 # use data to initialize inducing stuff
-inducing_data_initialization = True
+inducing_data_initialization = False
 # use natural gradients and/or CIQ
 use_ngd = False 
 use_ciq = False 
 # learning rate
 learning_rate_hypers = 0.01
+learning_rate_ngd    = 0.1
+#lr_sched = lambda epoch: 1.0/(1+epoch)
+lr_sched = None
 
 # training and testing data
 train_x = torch.rand(n,dim)
@@ -64,10 +68,12 @@ model,likelihood = train_gp(train_dataset,
                       minibatch_dim = num_directions,
                       num_epochs =num_epochs, 
                       learning_rate_hypers=learning_rate_hypers,
+                      learning_rate_ngd=learning_rate_ngd,
                       inducing_data_initialization=inducing_data_initialization,
                       use_ngd = use_ngd,
                       use_ciq = use_ciq,
-                      tqdm=tqdm
+                      lr_sched=lr_sched,
+                      tqdm=tqdm,
                       )
 t2 = time.time()	
 
@@ -76,7 +82,6 @@ t2 = time.time()
 
 # test
 means, variances = eval_gp( test_dataset,model,likelihood,
-                            num_inducing=num_inducing,
                             num_directions=num_directions,
                             minibatch_size=n_test,
                             minibatch_dim=num_directions)
@@ -90,7 +95,6 @@ test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt
 print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
 print(f"Training time: {(t2-t1):.2f} sec, testing time: {(t3-t2):.2f} sec")
 
-# TODO: call some plot util funs here
 plot=0
 if plot == 1:
     from mpl_toolkits.mplot3d import axes3d
