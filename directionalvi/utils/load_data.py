@@ -33,7 +33,6 @@ def load_synthetic_data(test_fun, n, **kwargs):
         y = torch.cat([f, g], 1)
     return x_unit, y
 
-
 #use real_helens when calling in exp_script.py
 def load_helens(data_src_path, **args):
     '''
