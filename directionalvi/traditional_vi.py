@@ -78,10 +78,13 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
             optimizer.step()
         if i % 100 == 0 and print_loss:
             print(f"Training epoch {i}, loss: {loss.item()}")
+        sys.stdout.flush()
+
     if print_loss:
         print(f"Training epoch {i}, loss: {loss.item()}")
 
     print("\nDone Training!")
+    sys.stdout.flush()
     return model, likelihood
 
 def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
