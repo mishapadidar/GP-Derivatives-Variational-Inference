@@ -115,4 +115,6 @@ outdata['test_mse']   = test_mse
 outdata['test_nll']   = test_nll
 outdata['train_time'] = train_time
 outdata['test_time']  = test_time
+# add the run params
+outdata.update(run_params)
 pickle.dump(outdata,open(data_filename,"wb"))
