@@ -37,9 +37,31 @@ class Branin_with_deriv(Branin):
         return lb, ub
 
 class SixHumpCamel_with_deriv(SixHumpCamel):
-    r"""SixHumpCamel test function.
+    r"""
+    dim = 2
+    _bounds = [(-3.0, 3.0), (-2.0, 2.0)]
+    SixHumpCamel test function.
+      (4 - 2.1 * x1 ** 2 + x1 ** 4 / 3) * x1 ** 2
+            + x1 * x2
+            + (4 * x2 ** 2 - 4) * x2 ** 2
      """
-    pass     
+    def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
+        d = X.shape[-1]     
+        x1 = X[..., 0]
+        x2 = X[..., 1]
+        val = super().evaluate_true(X)
+        val = val.unsqueeze(-1)
+        grad_x1 = x2 + 2 * x1 * (4 - 2.1 * x1 ** 2 + x1 ** 4 / 3) + (-4.2 * x1 + 4*x1**3 / 3) * x1 ** 2
+        grad_x2 = x1 + 2*x2*(4 * x2 ** 2 - 4) + (8 * x2) * x2 ** 2
+        grad_x1 = grad_x1.unsqueeze(-1)
+        grad_x2 = grad_x2.unsqueeze(-1)
+        return torch.cat([val, grad_x1, grad_x2], 1)
+
+    def get_bounds(self):
+            lb = np.array([item[0] for item in self._bounds])
+            ub = np.array([item[1] for item in self._bounds])
+            return lb, ub
+
 
 class StyblinskiTang_with_deriv(StyblinskiTang):
     r"""StyblinskiTang test function.
