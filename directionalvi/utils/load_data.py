@@ -1,6 +1,7 @@
 from synthetic_functions import *
 from rescale import *
-
+import scipy.io
+from torch.utils.data import TensorDataset, DataLoader
 
 def load_synthetic_data(test_fun, n, **kwargs):
     '''
@@ -33,5 +34,43 @@ def load_synthetic_data(test_fun, n, **kwargs):
     return x_unit, y
 
 
+#use real_helens when calling in exp_script.py
+def load_helens(data_src_path, **args):
+    '''
+    load synthetic data 
+    Input: 
+        data_src_path: path to dataset
+    Output: 
+        train_dataset: torch TensorDataset
+        test_dataset: torch TensorDataset
+        dim: x-dimension of data
+    '''
+    torch.random.manual_seed(args["seed"])
+    n = args["n_train"]
+    n_test = args["n_test"]
 
-# def load_real_data(src, n, **kwargs):
+    # Apply normalizations to dataset 
+    mat = scipy.io.loadmat(data_src_path)
+    x = torch.tensor(np.float64(mat['mth_points'])).float()
+    SCALE_0_FACTOR = max(x[:, 0])
+    SCALE_1_FACTOR = max(x[:, 1])
+    x[:, 0] = x[:, 0]/SCALE_0_FACTOR
+    x[:, 1] = x[:, 1]/SCALE_1_FACTOR
+    y = torch.tensor(np.float64(mat['mth_verts'])).float()
+    SCALE_Y_FACTOR = max(y)
+    y = y/SCALE_Y_FACTOR
+    dy = torch.tensor(np.float64(mat['mth_grads'])).float()
+    dy = dy / SCALE_Y_FACTOR #modify derivatives due to y-scaling
+    dy[:, 0] = dy[:, 0]*SCALE_0_FACTOR #modify derivatives due to x-scaling
+    dy[:, 1] = dy[:, 1]*SCALE_1_FACTOR
+    data = torch.cat((y, dy), dim = 1).float()
+    #full_data = torch.cat((x, data), dim=1).float() #location concatenated with y and dy values
+    if torch.cuda.is_available():
+        x, data = x.cuda(), data.cuda()
+    dataset = TensorDataset(x, data)
+
+    # Train-Test Split
+    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n, n_test])#, generator=torch.Generator().manual_seed(42))
+    dim = len(train_dataset[0][0])
+
+    return train_dataset, test_dataset, dim

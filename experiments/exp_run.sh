@@ -1,9 +1,10 @@
-dataset="synthetic-Branin" # synthetic/real-dataset name 
+#dataset="synthetic-Branin" # synthetic/real - dataset name 
+dataset="real-helens"
 
 # exp setups
-n_train=400
-n_test=1000
-num_inducing=200
+n_train=12000
+n_test=2040
+num_inducing=500
 num_directions=2
 num_epochs=100
 batch_size=200
@@ -16,7 +17,7 @@ num_contour_quad=15
 
 model="DSVGP"
 variational_strategy="standard"
-variational_distribution="standard"
+variational_distribution="standard" 
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\

@@ -50,17 +50,16 @@ def main(**args):
         dim = testfun.dim
         train_x, train_y = load_synthetic_data(testfun, n, **args)
         test_x, test_y = load_synthetic_data(testfun, n_test, **args)
-    else:
-        data_loader = eval(f"load_{dataset}")
-        data_src_path = f"./data/{dataset_name}"
-        train_x, train_y = data_loader(data_src_path, n, **args)
-        test_x, test_y = data_loader(data_src_path, n_test, **args)
-        dim=train_x.shape[..., 1]
-
-    if torch.cuda.is_available():
-        train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
-    train_dataset = TensorDataset(train_x,train_y)
-    test_dataset = TensorDataset(test_x,test_y)
+        #obtain train and test TensorDatasets
+        if torch.cuda.is_available():
+            train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+        train_dataset = TensorDataset(train_x,train_y)
+        test_dataset = TensorDataset(test_x,test_y)
+    else: #load real dataset
+        #obtain train and test TensorDatasets
+        data_loader = eval(f"load_{dataset_name}")
+        data_src_path = f"../data/{dataset_name}"
+        train_dataset, test_dataset, dim = data_loader(data_src_path, **args)
 
     assert num_inducing < n
     assert num_directions <= dim
