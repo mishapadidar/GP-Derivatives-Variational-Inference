@@ -38,6 +38,7 @@ gamma    = run_params['gamma']
 #lr_sched = run_params['lr_sched']
 seed     = run_params['seed']
 base_name = run_params['base_name']
+data_file = run_params['data_file']
 
 # make the learning rate schedule
 lr_sched = lambda epoch: 1./(1+gamma*epoch)
@@ -53,8 +54,7 @@ if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
 
 # load a dataset
-#dataset = csv_dataset("../../data/focus_w7x_dataset.csv",rescale=True)
-dataset = csv_dataset("../../data/focus_w7x_dataset_small.csv",rescale=True)
+dataset = csv_dataset(data_file,rescale=True)
 dim = len(dataset[0][0])
 n   = len(dataset)
 
