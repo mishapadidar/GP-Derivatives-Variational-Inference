@@ -93,14 +93,23 @@ def main(**args):
     elif args["model"]=="DSVGP":
         use_ngd=True if variational_strat == "CIQ" else False
         use_ngd=True if variational_dist == "NGD" else False
+        learning_rate_hypers = args["lr"]
+        learning_rate_ngd = args["lr_ngd"]
+        lr_sched=None
+        num_contour_quadrature=args["num_contour_quad"],
         model,likelihood = train_gp(train_dataset,
                                 num_inducing=num_inducing,
                                 num_directions=num_directions,
                                 minibatch_size=minibatch_size,
                                 minibatch_dim=num_directions,
                                 num_epochs=num_epochs,
-                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd
+                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd,
+                                lr_sched = lr_sched,
+                                learning_rate_ngd = learning_rate_ngd,
+                                learning_rate_hypers = learning_rate_hypers,
+                                num_contour_quadrature = num_contour_quadrature
                                 )
+
     if torch.cuda.is_available():
         end.record()
         torch.cuda.synchronize()
@@ -165,8 +174,6 @@ if __name__ == "__main__":
     parser.add_argument("-vd", "--variational_distribution", type=str, default="standard", choices=["standard", "NGD"])
 
     # Model args
-    #TODO: add CIQ args
-
     # Training args
     parser.add_argument("--n_train", type=int, default=100)
     parser.add_argument("--n_test", type=int, default=100)
@@ -174,9 +181,9 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--num_directions", type=int, default=10)
     parser.add_argument("-n", "--num_epochs", type=int, default=1)
     parser.add_argument("-bs", "--batch_size", type=int, default=256)
-    #TODO: add learning rates
-    # parser.add_argument("-lr", "--lr", type=float, default=0.01)
-    # parser.add_argument("-vlr", "--vlr", type=float, default=0.1)
+    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--lr_ngd", type=float, default=0.1)
+    parser.add_argument("--num_contour_quad", type=int, default=15)
 
     # Seed/splits/restarts
     parser.add_argument("-s", "--seed", type=int, default=0)
