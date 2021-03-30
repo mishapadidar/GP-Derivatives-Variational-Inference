@@ -57,8 +57,8 @@ def main(**args):
         test_dataset = TensorDataset(test_x,test_y)
     else: #load real dataset
         #obtain train and test TensorDatasets
-        data_loader = eval(f"load_{dataset}")
-        data_src_path = f"./data/{dataset_name}"
+        data_loader = eval(f"load_{dataset_name}")
+        data_src_path = f"../data/{dataset_name}"
         train_dataset, test_dataset, dim = data_loader(data_src_path, **args)
 
     assert num_inducing < n

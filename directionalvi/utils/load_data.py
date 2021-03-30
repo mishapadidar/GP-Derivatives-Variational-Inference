@@ -3,7 +3,6 @@ from rescale import *
 import scipy.io
 from torch.utils.data import TensorDataset, DataLoader
 
-
 def load_synthetic_data(test_fun, n, **kwargs):
     '''
     load synthetic data 

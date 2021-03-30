@@ -1,5 +1,5 @@
 #dataset="synthetic-Branin" # synthetic/real - dataset name 
-dataset = "real-helens"
+dataset="real-helens"
 
 # exp setups
 n_train=12000
@@ -14,30 +14,31 @@ batch_size=200
 
 model="DSVGP"
 variational_strategy="standard"
-variational_distribution="standard"
+variational_distribution="standard" 
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model} 
 
-model="DSVGP"
-variational_strategy="standard"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}
+# model="DSVGP"
+# variational_strategy="standard"
+# variational_distribution="NGD"
+# sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}
 
-model="DSVGP"
-variational_strategy="CIQ"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}
+# model="DSVGP"
+# variational_strategy="CIQ"
+# variational_distribution="NGD"
+# sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}
 
 # for traditional SVGP, 
 # variational_strategy and variational_distribution don't matter, but need to pass in them.
-model="SVGP"
-variational_strategy="standard"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}
+
+# model="SVGP"
+# variational_strategy="standard"
+# variational_distribution="NGD"
+# sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}
