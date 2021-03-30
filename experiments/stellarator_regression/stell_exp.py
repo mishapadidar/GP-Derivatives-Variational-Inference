@@ -7,6 +7,7 @@ import random
 import time
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
+import os
 import sys
 sys.path.append("../")
 sys.path.append("../../directionalvi/utils")
@@ -20,7 +21,7 @@ import pickle
 
 
 # load a pickle with the run params
-args = sys.argv[1:]
+args = sys.argv
 param_filename = args[1]
 run_params = pickle.load(open(param_filename,"rb"))
 num_inducing   =run_params['num_inducing']
@@ -34,20 +35,26 @@ use_ciq =run_params['use_ciq']
 learning_rate_hypers = run_params['learning_rate_hypers']
 learning_rate_ngd    = run_params['learning_rate_ngd']
 gamma    = run_params['gamma']
-lr_sched = run_params['lr_sched']
+#lr_sched = run_params['lr_sched']
 seed     = run_params['seed']
 base_name = run_params['base_name']
+
+# make the learning rate schedule
+lr_sched = lambda epoch: 1./(1+gamma*epoch)
 
 # set the seed
 torch.random.manual_seed(seed)
 
 # output file names
-data_dir = "./data/"
+data_dir = "./output/"
 model_filename = data_dir + base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
+if os.path.exists(data_dir) is False:
+  os.mkdir(data_dir)
 
 # load a dataset
-dataset = csv_dataset("../../data/focus_w7x_dataset.csv",rescale=True)
+#dataset = csv_dataset("../../data/focus_w7x_dataset.csv",rescale=True)
+dataset = csv_dataset("../../data/focus_w7x_dataset_small.csv",rescale=True)
 dim = len(dataset[0][0])
 n   = len(dataset)
 
@@ -105,7 +112,7 @@ print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 # dump the data
 outdata = {}
 outdata['test_mse']   = test_mse
-outdata['test_nll']   = teste_nll
+outdata['test_nll']   = test_nll
 outdata['train_time'] = train_time
 outdata['test_time']  = test_time
 pickle.dump(outdata,open(data_filename,"wb"))
