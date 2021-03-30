@@ -25,7 +25,8 @@ def main(**args):
     torch.random.manual_seed(args["seed"])
     testfun_name = f"{args['test_fun']}"
     testfun = eval(f"{testfun_name}_with_deriv")()
-    dim = testfun.dim
+    dataset = args["dataset"]
+    dim = testfun.dim   
     n = args["n_train"]
     n_test = args["n_test"]
     num_inducing = args["num_inducing"]

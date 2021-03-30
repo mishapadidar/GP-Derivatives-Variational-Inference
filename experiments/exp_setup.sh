@@ -17,7 +17,7 @@ then
 fi
 
 python exp_script.py \
-    --test_fun ${test_fun} --variational_strategy ${variational_strategy}\
+    --test_fun ${test_fun} --dataset ${dataset} --variational_strategy ${variational_strategy}\
     --variational_distribution ${variational_distribution} \
     --n_train ${n_train} --n_test ${n_test}\
     --num_inducing ${num_inducing} --num_directions ${num_directions}\
