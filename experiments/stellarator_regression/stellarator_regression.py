@@ -12,9 +12,8 @@ import sys
 sys.path.append("../")
 sys.path.append("../../directionalvi/utils")
 sys.path.append("../../directionalvi")
-from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
-from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
 from directional_vi import train_gp, eval_gp
+import traditional_vi
 from csv_dataset import csv_dataset
 from metrics import MSE
 import pickle
@@ -39,6 +38,7 @@ gamma    = run_params['gamma']
 seed     = run_params['seed']
 base_name = run_params['base_name']
 data_file = run_params['data_file']
+mode = run_params['mode']
 
 # make the learning rate schedule
 lr_sched = lambda epoch: 1./(1+gamma*epoch)
@@ -54,7 +54,9 @@ if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
 
 # load a dataset
-dataset = csv_dataset(data_file,rescale=True)
+if mode == "SVGP": gradients = False
+else: gradients = True
+dataset = csv_dataset(data_file,rescale=True,gradients=gradients)
 dim = len(dataset[0][0])
 n   = len(dataset)
 
@@ -64,48 +66,82 @@ n_test  = int(0.2*n)
 
 train_dataset,test_dataset = torch.utils.data.random_split(dataset,[n_train,n_test])
 
-# train
-print("\n\n---DirectionalGradVGP---")
-print(f"Start training with {n} trainig data of dim {dim}")
-print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
-t1 = time.time()	
-model,likelihood = train_gp(train_dataset,
-                      num_inducing=num_inducing,
-                      num_directions=num_directions,
-                      minibatch_size = minibatch_size,
-                      minibatch_dim = num_directions,
-                      num_epochs =num_epochs, 
-                      learning_rate_hypers=learning_rate_hypers,
-                      learning_rate_ngd=learning_rate_ngd,
-                      inducing_data_initialization=inducing_data_initialization,
-                      use_ngd = use_ngd,
-                      use_ciq = use_ciq,
-                      lr_sched=lr_sched,
-                      tqdm=tqdm,
-                      )
-t2 = time.time()	
-train_time = t2 - t1
 
-# save the model
-torch.save(model.state_dict(),model_filename)
+if mode == "DSVGP":
+  # train
+  print("\n\n---DirectionalGradVGP---")
+  print(f"Start training with {n} trainig data of dim {dim}")
+  print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+  t1 = time.time()	
+  model,likelihood = train_gp(train_dataset,
+                        num_inducing=num_inducing,
+                        num_directions=num_directions,
+                        minibatch_size = minibatch_size,
+                        minibatch_dim = num_directions,
+                        num_epochs =num_epochs, 
+                        learning_rate_hypers=learning_rate_hypers,
+                        learning_rate_ngd=learning_rate_ngd,
+                        inducing_data_initialization=inducing_data_initialization,
+                        use_ngd = use_ngd,
+                        use_ciq = use_ciq,
+                        lr_sched=lr_sched,
+                        tqdm=tqdm,
+                        )
+  t2 = time.time()	
+  train_time = t2 - t1
+  
+  # save the model
+  torch.save(model.state_dict(),model_filename)
+  
+  # test
+  means, variances = eval_gp(test_dataset,model,likelihood,
+                              num_directions=num_directions,
+                              minibatch_size=minibatch_size,
+                              minibatch_dim=num_directions)
+  t3 = time.time()	
+  test_time = t3 - t2
 
-# test
-means, variances = eval_gp(test_dataset,model,likelihood,
-                            num_directions=num_directions,
-                            minibatch_size=minibatch_size,
-                            minibatch_dim=num_directions)
-t3 = time.time()	
-test_time = t3 - t2
+  # only keep the function values
+  means = means[::num_directions+1]
+  variances = variances[::num_directions+1]
+
+elif mode == "SVGP":
+  # train
+  print("\n\n---Traditional SVGP---")
+  print(f"Start training with {n} training data of dim {dim}")
+  print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+  t1 = time.time()	
+  model,likelihood = traditional_vi.train_gp(train_dataset,dim,
+                                              num_inducing=num_inducing,
+                                              minibatch_size=minibatch_size,
+                                              num_epochs=num_epochs,
+                                              tqdm=tqdm)
+  t2 = time.time()	
+  train_time = t2 - t1
+  
+  # save the model
+  torch.save(model.state_dict(),model_filename)
+  
+  # test
+  means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
+                                            num_inducing=num_inducing,
+                                            minibatch_size=n_test)
+  t3 = time.time()	
+  test_time = t3 - t2
+  
 
 # collect the test function values
 test_f = torch.zeros(n_test)
 for ii in range(n_test):
-  test_f[ii] = test_dataset[ii][1][0] # function value
+  if mode == "DSVGP":
+    test_f[ii] = test_dataset[ii][1][0] # function value
+  elif mode == "SVGP":
+    test_f[ii] = test_dataset[ii][1] # function value
 
 # compute MSE
-test_mse = MSE(test_f,means[::num_directions+1])
+test_mse = MSE(test_f,means)
 # compute mean negative predictive density
-test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f).mean()
+test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f).mean()
 print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
 print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 

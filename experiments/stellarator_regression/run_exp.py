@@ -12,17 +12,18 @@ run_params_dir = "./param_files/"
 if os.path.exists(run_params_dir) is False:
   os.mkdir(run_params_dir)
 run_params = {}
+run_params['mode']                         = "DSVGP" # or SVGP
 run_params['num_inducing']                 = 1024
-run_params['num_directions']               = 5
-run_params['minibatch_size']               = 512
-run_params['num_epochs']                   = 300
+run_params['num_directions']               = 1
+run_params['minibatch_size']               = 256
+run_params['num_epochs']                   = 100
 run_params['tqdm']                         = False
 run_params['inducing_data_initialization'] = False
 run_params['use_ngd']                      = False
 run_params['use_ciq']                      = False
-run_params['learning_rate_hypers']         = 1e-3
+run_params['learning_rate_hypers']         = 5e-3  # 1e-3 worked well with gamma=0
 run_params['learning_rate_ngd']            = 1e-3
-run_params['gamma']                        = 0
+run_params['gamma']                        = 0.0
 run_params['data_file'] = "../../data/focus_w7x_dataset.csv"
 # seed and date
 now     = datetime.now()
@@ -31,9 +32,13 @@ barcode = "%d%.2d%.2d%.2d%.2d%.2d"%(now.year,now.month,now.day,now.hour,now.minu
 run_params['date']  = now
 run_params['seed']  = seed
 # file name
-base_name = f"stell_regress_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
+if run_params['mode'] == "DSVGP":
+  base_name = f"stell_regress_DSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
             f"_ne_{run_params['num_epochs']}_ngd_{run_params['use_ngd']}"+\
             f"_ciq_{run_params['use_ciq']}_{barcode}"
+elif run_params['mode'] == "SVGP":
+  base_name = f"stell_regress_SVGP_ni_{run_params['num_inducing']}"+\
+            f"_ne_{run_params['num_epochs']}_{barcode}"
 run_params['base_name']  = base_name
 param_filename = run_params_dir + "params_" +base_name + ".pickle"
 pickle.dump(run_params,open(param_filename,'wb'))
@@ -65,11 +70,12 @@ if write_sbatch:
   submit_name = slurm_dir + 'slurm_submit.sh'
   f = open(submit_name,"w")
   f.write(f"#!/bin/bash\n")
-  f.write(f"sbatch {slurm_name}")
+  f.write(f"sbatch --requeue {slurm_name}")
   f.close()
   print(f"Dumped bash script: {submit_name}")
 
 if submit:
   # submit the script
-  bash_command = f"sbatch {slurm_name}"
+  #bash_command = f"sbatch {slurm_name}"
+  bash_command = f"bash {submit_name}"
   subprocess.run(bash_command.split(" "))
