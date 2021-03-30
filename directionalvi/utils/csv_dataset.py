@@ -54,14 +54,19 @@ class csv_dataset(Dataset):
       x = torch.tensor(sample[self.xidx]).float() # x must be dtype float
       if self.gradients:
         y = torch.tensor(sample[self.fgidx])
+        if self.rescale:
+          # map x to unit cube
+          x = (x-self.lb)/(self.ub - self.lb)
+          # standardize function values (f-mu)/sigma
+          y[0] = (y[0] - self.favg)/self.fstd
+          # scale gradients appropriately
+          y[1:] =y[1:]*(self.ub - self.lb)/self.fstd
       else:
         y = sample[self.fidx][0]
-      if self.rescale:
-        # map x to unit cube
-        x = (x-self.lb)/(self.ub - self.lb)
-        # standardize function values (f-mu)/sigma
-        y[0] = (y[0] - self.favg)/self.fstd
-        # scale gradients appropriately
-        y[1:] =y[1:]*(self.ub - self.lb)/self.fstd
+        if self.rescale:
+          # map x to unit cube
+          x = (x-self.lb)/(self.ub - self.lb)
+          # standardize function values (f-mu)/sigma
+          y = (y - self.favg)/self.fstd
       return (x,y)
 
