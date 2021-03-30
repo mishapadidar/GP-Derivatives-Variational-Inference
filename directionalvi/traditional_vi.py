@@ -34,6 +34,8 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
     # setup model
     # inducing_points = train_x[:num_inducing, :]
     inducing_points = torch.rand(num_inducing,dim)
+    if torch.cuda.is_available():
+      inducing_points = inducing_points.cuda()
     model = GPModel(inducing_points=inducing_points)
     likelihood = gpytorch.likelihoods.GaussianLikelihood()
 
@@ -62,6 +64,9 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
         else:
             minibatch_iter = train_loader
         for x_batch, y_batch in minibatch_iter:
+            if torch.cuda.is_available():
+                x_batch = x_batch.cuda()
+                y_batch = y_batch.cuda()
             optimizer.zero_grad()
             output = model(x_batch)
             loss = -mll(output, y_batch)
@@ -73,10 +78,13 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
             optimizer.step()
         if i % 100 == 0 and print_loss:
             print(f"Training epoch {i}, loss: {loss.item()}")
+        sys.stdout.flush()
+
     if print_loss:
         print(f"Training epoch {i}, loss: {loss.item()}")
 
     print("\nDone Training!")
+    sys.stdout.flush()
     return model, likelihood
 
 def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
@@ -92,6 +100,9 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
     variances = torch.tensor([0.])
     with torch.no_grad():
         for x_batch, y_batch in test_loader:
+            if torch.cuda.is_available():
+                x_batch = x_batch.cuda()
+                y_batch = y_batch.cuda()
             preds = model(x_batch)
             means = torch.cat([means, preds.mean.cpu()])
             variances = torch.cat([variances, preds.variance.cpu()])

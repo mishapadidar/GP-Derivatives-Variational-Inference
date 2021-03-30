@@ -1,7 +1,8 @@
 import math
 import torch
+import numpy as np
 from botorch.test_functions.base import BaseTestProblem
-from botorch.test_functions.synthetic import Branin
+from botorch.test_functions.synthetic import Branin, SixHumpCamel
 from torch import Tensor
 
 class Branin_with_deriv(Branin):
@@ -29,3 +30,19 @@ class Branin_with_deriv(Branin):
         grad_x1 = grad_x1.unsqueeze(-1)
         grad_x2 = grad_x2.unsqueeze(-1)
         return torch.cat([val, grad_x1, grad_x2], 1)
+
+    def get_bounds(self):
+        lb = np.array([item[0] for item in self._bounds])
+        ub = np.array([item[1] for item in self._bounds])
+        return lb, ub
+
+class SixHumpCamel_with_deriv(SixHumpCamel):
+    r"""SixHumpCamel test function.
+
+    Two-dimensional function (usually evaluated on `[-3, 3] x [-2, 2]`):
+
+        f(x) = (x_2 - b x_1^2 + c x_1 - r)^2 + 10 (1-t) cos(x_1) + 10
+
+    B has 3 minimizers for its global minimum at `z_1 = (-pi, 12.275)`,
+    `z_2 = (pi, 2.275)`, `z_3 = (9.42478, 2.475)` with `B(z_i) = 0.397887`.
+    """

@@ -16,17 +16,16 @@ from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
 from directional_vi import *
 import traditional_vi
-from metrics import MSE
-from synthetic.test_funs import *
+from load_data import *
+from metrics import *
+from synthetic_functions import *
 
 
 def main(**args):
     # seed
     torch.random.manual_seed(args["seed"])
-    testfun_name = f"{args['test_fun']}"
-    testfun = eval(f"{testfun_name}_with_deriv")()
-    dataset = args["dataset"]
-    dim = testfun.dim   
+    dataset_type = args["dataset"].split('-')[0]
+    dataset_name = args["dataset"].split('-')[1]
     n = args["n_train"]
     n_test = args["n_test"]
     num_inducing = args["num_inducing"]
@@ -35,42 +34,49 @@ def main(**args):
     num_epochs = args["num_epochs"]
     variational_dist = args["variational_distribution"]
     variational_strat = args["variational_strategy"]
+
+    if args["model"]=="SVGP":
+        args["derivative"]=False
+        expname_train = f"SVGP_{dataset_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_seed{args['seed']}"
+    elif args["model"]=="DSVGP":
+        args["derivative"]=True
+        expname_train = f"DSVGP_{dataset_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_seed{args['seed']}"
+    expname_test = f"{expname_train}_ntest{n_test}"
+    print(f"\n\n\nStart Experiment: {expname_test}")
+
+    # generate training data, x in unit cube, y normalized, derivative rescaled
+    if dataset_type=="synthetic":
+        testfun = eval(f"{dataset_name}_with_deriv")()
+        dim = testfun.dim
+        train_x, train_y = load_synthetic_data(testfun, n, **args)
+        test_x, test_y = load_synthetic_data(testfun, n_test, **args)
+        #obtain train and test TensorDatasets
+        if torch.cuda.is_available():
+            train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+        train_dataset = TensorDataset(train_x,train_y)
+        test_dataset = TensorDataset(test_x,test_y)
+    else: #load real dataset
+        #obtain train and test TensorDatasets
+        data_loader = eval(f"load_{dataset}")
+        data_src_path = f"./data/{dataset_name}"
+        train_dataset, test_dataset, dim = data_loader(data_src_path, **args)
+
     assert num_inducing < n
     assert num_directions <= dim
     assert minibatch_size <= n
-    if args["model"]=="SVGP":
-        expname_train = f"SVGP_{testfun_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_seed{args['seed']}"
-    elif args["model"]=="DSVGP":
-        expname_train = f"DSVGP_{testfun_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_seed{args['seed']}"
-    expname_test = f"{expname_train}_ntest{n_test}"
-    print(f"\nStart Experiment: {expname_test}")
-
-    # generate training data
-    train_x = torch.rand(n,dim)
-    test_x = torch.rand(n_test,dim)
-    if args["model"]=="SVGP":
-        train_y = testfun.evaluate_true(train_x)
-        test_y = testfun.evaluate_true(test_x)
-    elif args["model"]=="DSVGP":
-        train_y = testfun.evaluate_true_with_deriv(train_x)
-        test_y = testfun.evaluate_true_with_deriv(test_x)
-    if torch.cuda.is_available():
-        train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
-    train_dataset = TensorDataset(train_x,train_y)
-    test_dataset = TensorDataset(test_x,test_y)
 
     # train
     if args["model"]=="SVGP":
-        print("\n\n---Traditional SVGP---")
+        print("\n---Traditional SVGP---")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points")
     elif args["model"]=="DSVGP":
-        print("\n\n---D-SVGP---")
+        print("\n---D-SVGP---")
         print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-    t1 = time.time()	
+    t1 = time.perf_counter()	
 
     if args["model"]=="SVGP":
         model,likelihood = traditional_vi.train_gp(train_dataset,dim,
@@ -79,34 +85,18 @@ def main(**args):
                                                    num_epochs=num_epochs,
                                                    tqdm=False)
     elif args["model"]=="DSVGP":
-        if variational_dist == "standard" and variational_strat == "standard":
-            model,likelihood = train_gp(train_dataset,
+        use_ngd=True if variational_strat == "CIQ" else False
+        use_ngd=True if variational_dist == "NGD" else False
+        model,likelihood = train_gp(train_dataset,
                                 num_inducing=num_inducing,
                                 num_directions=num_directions,
                                 minibatch_size=minibatch_size,
                                 minibatch_dim=num_directions,
                                 num_epochs=num_epochs,
-                                tqdm=False
+                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd
                                 )
-        elif variational_dist == "NGD" and variational_strat == "standard":
-            model,likelihood = train_gp_ngd(train_dataset,
-                                num_inducing=num_inducing,
-                                num_directions=num_directions,
-                                minibatch_size=minibatch_size,
-                                minibatch_dim=num_directions,
-                                num_epochs=num_epochs,
-                                tqdm=False
-                                )
-        elif variational_strat == "CIQ":
-            model,likelihood = train_gp_ciq(train_dataset,
-                                num_inducing=num_inducing,
-                                num_directions=num_directions,
-                                minibatch_size=minibatch_size,
-                                minibatch_dim=num_directions,
-                                num_epochs=num_epochs,
-                                tqdm=False)
-    
-    t2 = time.time()	
+    torch.cuda.current_stream().synchronize()
+    t2 = time.perf_counter()	
 
     # save the model
     if args["save_model"]:
@@ -119,20 +109,22 @@ def main(**args):
                                                   minibatch_size=n_test)
         # metrics
         test_mse = MSE(test_y.cpu(),means)
+        test_rmse = RMSE(test_y.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
-                                    num_inducing=num_inducing,
                                     num_directions=num_directions,
                                     minibatch_size=n_test,
                                     minibatch_dim=num_directions)
         # compute MSE
         test_mse = MSE(test_y.cpu()[:,0],means[::num_directions+1])
+        test_rmse = RMSE(test_y.cpu()[:,0],means[::num_directions+1])
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
-    t3 = time.time()	
-    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, nll: {test_nll:.4e}.")
+    torch.cuda.current_stream().synchronize()
+    t3 = time.perf_counter()	
+    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}.")
     print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
 
 
@@ -147,8 +139,7 @@ if __name__ == "__main__":
 
     # Dataset and model type
     #TODO: add real dataset experiment
-    # parser.add_argument("-d", "--dataset", type=str, default="bunny")
-    parser.add_argument("-f", "--test_fun", type=str, default="Branin")
+    parser.add_argument("-d", "--dataset", type=str, default="synthetic-Branin")
     parser.add_argument("--model", type=str, default="DSVGP")
     parser.add_argument("-vs", "--variational_strategy", type=str, default="standard", choices=["standard", "CIQ"])
     parser.add_argument("-vd", "--variational_distribution", type=str, default="standard", choices=["standard", "NGD"])

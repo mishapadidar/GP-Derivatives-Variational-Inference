@@ -9,4 +9,4 @@
 #SBATCH -t 168:00:00                       # Time limit (hh:mm:ss)
 #SBATCH --partition=default_gpu            # Request partition for resource 
 #SBATCH --gres=gpu:1                       # Specify a list of generic consumable resources (per node)
-python test_dvi_basic.py
+python test_dsvgp.py

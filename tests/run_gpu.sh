@@ -1,2 +1,2 @@
-sbatch --requeue submit_gpu.sub
+sbatch submit_gpu.sub
 
