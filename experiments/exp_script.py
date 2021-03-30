@@ -76,7 +76,12 @@ def main(**args):
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-    t1 = time.perf_counter()	
+    if torch.cuda.is_available():
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+    else:
+        t1 = time.time_ns()	
 
     if args["model"]=="SVGP":
         model,likelihood = traditional_vi.train_gp(train_dataset,dim,
@@ -95,8 +100,16 @@ def main(**args):
                                 num_epochs=num_epochs,
                                 tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd
                                 )
-    torch.cuda.current_stream().synchronize()
-    t2 = time.perf_counter()	
+    if torch.cuda.is_available():
+        end.record()
+        torch.cuda.synchronize()
+        train_time = start.elapsed_time(end)/1e3
+        sys.stdout.flush()
+        start.record()
+    else:
+        t2 = time.time_ns()
+        train_time = (t2-t1)/1e9
+        	
 
     # save the model
     if args["save_model"]:
@@ -122,10 +135,16 @@ def main(**args):
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
-    torch.cuda.current_stream().synchronize()
-    t3 = time.perf_counter()	
+    if torch.cuda.is_available():
+        end.record()
+        torch.cuda.synchronize()
+        test_time = start.elapsed_time(end)/1e3
+        sys.stdout.flush()
+    else:    
+        t3 = time.time_ns()
+        test_time = (t3-t2)/1e9	
     print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}.")
-    print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
+    print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 
 
 if __name__ == "__main__":
