@@ -26,7 +26,7 @@ barcode = "%d%.2d%.2d%.2d%.2d%.2d"%(now.year,now.month,now.day,now.hour,now.minu
 run_params['date']  = now
 run_params['seed']  = seed
 # file name
-base_name = f"stell_exp_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
+base_name = f"stell_regress_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
             f"_ne_{run_params['num_epochs']}_ngd_{run_params['use_ngd']}"+\
             f"_ciq_{run_params['use_ciq']}_{barcode}"
 run_params['base_name']  = base_name
@@ -51,7 +51,7 @@ f.write(f"#SBATCH --mem=15000\n")
 f.write(f"#SBATCH -t 168:00:00\n")
 f.write(f"#SBATCH --partition=default_gpu\n")
 f.write(f"#SBATCH --gres=gpu:1\n")
-f.write(f"python3 stell_exp.py {param_filename}\n")
+f.write(f"python3 stellarator_regression.py {param_filename}\n")
 
 # write the shell submission script
 submit_name = slurm_dir + 'slurm_submit.sh'
