@@ -63,6 +63,7 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
             minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
         else:
             minibatch_iter = train_loader
+        mini_steps = 0
         for x_batch, y_batch in minibatch_iter:
             if torch.cuda.is_available():
                 x_batch = x_batch.cuda()
@@ -76,8 +77,11 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
                 epochs_iter.set_postfix(loss=loss.item())           
             loss.backward()
             optimizer.step()
-        if i % 100 == 0 and print_loss:
-            print(f"Training epoch {i}, loss: {loss.item()}")
+        #if i % 100 == 0 and print_loss:
+        if mini_steps % 10 == 0 and print_loss:
+            #print(f"Training epoch {i}, loss: {loss.item()}")
+            print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+        mini_steps +=1
         sys.stdout.flush()
 
     if print_loss:
