@@ -45,7 +45,8 @@ mode = run_params['mode']
 # make the learning rate schedule
 #lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
 def lr_sched(epoch):
-  a = np.sum(lr_benchmarks > epoch)
+  a = np.sum(lr_benchmarks < epoch)
+  # lr_gamma should be > 1
   return (1./lr_gamma)**a
 
 # set the seed
