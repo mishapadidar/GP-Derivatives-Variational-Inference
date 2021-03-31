@@ -2,6 +2,7 @@ import os
 import pickle
 import subprocess
 from datetime import datetime
+import numpy as np
 
 # flags
 write_sbatch =True
@@ -18,15 +19,17 @@ for dd in n_dir_list:
   run_params['mode']                         = "DSVGP" # or SVGP
   run_params['num_inducing']                 = 1024
   run_params['num_directions']               = dd
-  run_params['minibatch_size']               = 512
+  run_params['minibatch_size']               = 256
   run_params['num_epochs']                   = 400
   run_params['tqdm']                         = False
   run_params['inducing_data_initialization'] = False
   run_params['use_ngd']                      = False
   run_params['use_ciq']                      = False
-  run_params['learning_rate_hypers']         = 0.01  # 5e-3,gamma=1
-  run_params['learning_rate_ngd']            = 1e-3
-  run_params['gamma']                        = 1.0
+  run_params['num_contour_quadrature']       = 10 # gpytorch default=15
+  run_params['learning_rate_hypers']         = 0.01  
+  run_params['learning_rate_ngd']            = 0.1
+  run_params['lr_benchmarks']                = np.array([50,150,300])
+  run_params['lr_gamma']                     = 10.0
   run_params['data_file'] = "../../data/focus_w7x_dataset.csv"
   # seed and date
   now     = datetime.now()
