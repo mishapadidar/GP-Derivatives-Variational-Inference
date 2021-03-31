@@ -7,5 +7,7 @@ slurm_output
 experiments/logs/a.*
 experiments/real_data_process/lenet/scratch
 experiments/real_data
-experiments/Untitled.ipynb
 experiments/.ipynb_checkpoints/Untitled-checkpoint.ipynb
+experiments/scratch.ipynb
+experiments/wandb
+experiments/*.exp
