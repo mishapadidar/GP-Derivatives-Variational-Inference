@@ -55,6 +55,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
         inducing_points = inducing_points.cuda()
 
     if use_ciq:
+        gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
         model = GPModel(inducing_points=inducing_points,variational_distribution="NGD",variational_strategy="CIQ")
     elif use_ngd:
         model = GPModel(inducing_points=inducing_points,variational_distribution="NGD")
@@ -122,11 +123,11 @@ def train_gp(train_dataset,dim,num_inducing=128,
             if "tqdm" in args and args["tqdm"]:
                 epochs_iter.set_postfix(loss=loss.item())           
 
-        if mini_steps % 10 == 0 and print_loss:
-            print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+            if mini_steps % 10 == 0 and print_loss:
+                print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
 
-        mini_steps +=1
-        sys.stdout.flush()
+            mini_steps +=1
+            sys.stdout.flush()
 
     if print_loss:
         print(f"Training epoch {i}, loss: {loss.item()}")
