@@ -50,17 +50,16 @@ def main(**args):
         dim = testfun.dim
         train_x, train_y = load_synthetic_data(testfun, n, **args)
         test_x, test_y = load_synthetic_data(testfun, n_test, **args)
-    else:
-        data_loader = eval(f"load_{dataset}")
-        data_src_path = f"./data/{dataset_name}"
-        train_x, train_y = data_loader(data_src_path, n, **args)
-        test_x, test_y = data_loader(data_src_path, n_test, **args)
-        dim=train_x.shape[..., 1]
-
-    if torch.cuda.is_available():
-        train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
-    train_dataset = TensorDataset(train_x,train_y)
-    test_dataset = TensorDataset(test_x,test_y)
+        #obtain train and test TensorDatasets
+        if torch.cuda.is_available():
+            train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+        train_dataset = TensorDataset(train_x,train_y)
+        test_dataset = TensorDataset(test_x,test_y)
+    else: #load real dataset
+        #obtain train and test TensorDatasets
+        data_loader = eval(f"load_{dataset_name}")
+        data_src_path = f"../data/{dataset_name}"
+        train_dataset, test_dataset, dim = data_loader(data_src_path, **args)
 
     assert num_inducing < n
     assert num_directions <= dim
@@ -77,7 +76,12 @@ def main(**args):
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-    t1 = time.perf_counter()	
+    if torch.cuda.is_available():
+        start = torch.cuda.Event(enable_timing=True)
+        end = torch.cuda.Event(enable_timing=True)
+        start.record()
+    else:
+        t1 = time.time_ns()	
 
     if args["model"]=="SVGP":
         model,likelihood = traditional_vi.train_gp(train_dataset,dim,
@@ -88,16 +92,33 @@ def main(**args):
     elif args["model"]=="DSVGP":
         use_ngd=True if variational_strat == "CIQ" else False
         use_ngd=True if variational_dist == "NGD" else False
+        learning_rate_hypers = args["lr"]
+        learning_rate_ngd = args["lr_ngd"]
+        lr_sched=None
+        num_contour_quadrature=args["num_contour_quad"],
         model,likelihood = train_gp(train_dataset,
                                 num_inducing=num_inducing,
                                 num_directions=num_directions,
                                 minibatch_size=minibatch_size,
                                 minibatch_dim=num_directions,
                                 num_epochs=num_epochs,
-                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd
+                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd,
+                                lr_sched = lr_sched,
+                                learning_rate_ngd = learning_rate_ngd,
+                                learning_rate_hypers = learning_rate_hypers,
+                                num_contour_quadrature = num_contour_quadrature
                                 )
-    torch.cuda.current_stream().synchronize()
-    t2 = time.perf_counter()	
+
+    if torch.cuda.is_available():
+        end.record()
+        torch.cuda.synchronize()
+        train_time = start.elapsed_time(end)/1e3
+        sys.stdout.flush()
+        start.record()
+    else:
+        t2 = time.time_ns()
+        train_time = (t2-t1)/1e9
+        	
 
     # save the model
     if args["save_model"]:
@@ -123,10 +144,16 @@ def main(**args):
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
-    torch.cuda.current_stream().synchronize()
-    t3 = time.perf_counter()	
+    if torch.cuda.is_available():
+        end.record()
+        torch.cuda.synchronize()
+        test_time = start.elapsed_time(end)/1e3
+        sys.stdout.flush()
+    else:    
+        t3 = time.time_ns()
+        test_time = (t3-t2)/1e9	
     print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}.")
-    print(f"Training time: {(t2-t1)/1e9:.2f} sec, testing time: {(t3-t2)/1e9:.2f} sec")
+    print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 
 
 if __name__ == "__main__":
@@ -146,8 +173,6 @@ if __name__ == "__main__":
     parser.add_argument("-vd", "--variational_distribution", type=str, default="standard", choices=["standard", "NGD"])
 
     # Model args
-    #TODO: add CIQ args
-
     # Training args
     parser.add_argument("--n_train", type=int, default=100)
     parser.add_argument("--n_test", type=int, default=100)
@@ -155,9 +180,9 @@ if __name__ == "__main__":
     parser.add_argument("-p", "--num_directions", type=int, default=10)
     parser.add_argument("-n", "--num_epochs", type=int, default=1)
     parser.add_argument("-bs", "--batch_size", type=int, default=256)
-    #TODO: add learning rates
-    # parser.add_argument("-lr", "--lr", type=float, default=0.01)
-    # parser.add_argument("-vlr", "--vlr", type=float, default=0.1)
+    parser.add_argument("--lr", type=float, default=0.01)
+    parser.add_argument("--lr_ngd", type=float, default=0.1)
+    parser.add_argument("--num_contour_quad", type=int, default=15)
 
     # Seed/splits/restarts
     parser.add_argument("-s", "--seed", type=int, default=0)
