@@ -41,7 +41,11 @@ data_file = run_params['data_file']
 mode = run_params['mode']
 
 # make the learning rate schedule
-lr_sched = lambda epoch: 1./(1+gamma*epoch)
+#lr_sched = lambda epoch: 1./(1+gamma*epoch)
+levels = np.array([20,150,300])
+def lr_sched(epoch):
+  a = np.sum(levels > epoch)
+  return (1./gamma)**a
 
 # set the seed
 torch.random.manual_seed(seed)
