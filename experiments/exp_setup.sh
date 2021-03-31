@@ -11,18 +11,21 @@ model=${10}
 lr=${11}
 lr_ngd=${12}
 num_contour_quad=${13}
-
+watch_model=${14}
+exp_name=${15}
+seed=${16}
 
 if [ ! -d "./logs" ]
 then
     mkdir ./logs
 fi
 
-python exp_script.py \
+python -u exp_script.py \
     --dataset ${dataset} --variational_strategy ${variational_strategy}\
     --variational_distribution ${variational_distribution} \
     --n_train ${n_train} --n_test ${n_test}\
     --num_inducing ${num_inducing} --num_directions ${num_directions}\
     --num_epochs ${num_epochs} --batch_size ${batch_size} --model ${model}\
-    --lr ${lr} --lr_ngd ${lr_ngd} --num_contour_quad ${num_contour_quad}
-    2>&1 | tee logs/a.out_${model}_${dataset}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epochs${num_epochs}_${variational_distribution}_${variational_strategy}
+    --lr ${lr} --lr_ngd ${lr_ngd} --num_contour_quad ${num_contour_quad}\
+    --watch_model ${watch_model} --exp_name ${exp_name} --seed ${seed}\
+    2>&1 | tee logs/a.out_${dataset}_${model}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epoch${num_epochs}_${variational_distribution}_${variational_strategy}_exp${expname}

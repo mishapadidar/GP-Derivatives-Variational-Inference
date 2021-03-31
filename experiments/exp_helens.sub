@@ -1,0 +1,71 @@
+#!/bin/bash
+#SBATCH -J  basic                 # Job name
+#SBATCH -o ../slurm_output/job_%j.out    # Name of stdout output file(%j expands to jobId)
+#SBATCH -e ../slurm_output/job_%j.err    # Name of stderr output file(%j expands to jobId)
+#SBATCH --get-user-env                     # Tells sbatch to retrieve the users login environment
+#SBATCH -N 1                               # Total number of nodes requested
+#SBATCH -n 8                               # Total number of cores requested
+#SBATCH --mem=32G                        # Total amount of (real) memory requested (per node)
+#SBATCH -t 168:00:00                       # Time limit (hh:mm:ss)
+#SBATCH --partition=default_gpu            # Request partition for resource 
+#SBATCH --gres=gpu:1                       # Specify a list of generic consumable resources (per node)
+
+set -e
+. /home/xz584/anaconda3/etc/profile.d/conda.sh
+conda activate DSVGP
+
+# dataset="synthetic-Branin" # synthetic/real - dataset name 
+dataset="real-helens"
+
+# exp setups
+# fix some setups for this dataset
+n_train=12636
+n_test=1404
+batch_size=512
+watch_model=True
+# read other arguments from command line when sbatch this job
+num_inducing=${1}
+num_directions=${2}
+num_epochs=${3}
+lr=${4}
+lr_ngd=${5}
+num_contour_quad=${6}
+exp_name=${7}
+seed=${8}
+
+# compare different methods, comment out the chunk if not comparing with this method
+# find runlogs in logs folder
+
+model="DSVGP"
+variational_strategy="standard"
+variational_distribution="standard" 
+sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+                  ${n_train} ${n_test} ${num_inducing}\
+                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
+
+model="DSVGP"
+variational_strategy="standard"
+variational_distribution="NGD"
+sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+                  ${n_train} ${n_test} ${num_inducing}\
+                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
+
+model="DSVGP"
+variational_strategy="CIQ"
+variational_distribution="NGD"
+sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+                  ${n_train} ${n_test} ${num_inducing}\
+                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
+
+# for traditional SVGP, 
+# variational_strategy and variational_distribution don't matter, but need to pass in them.
+model="SVGP"
+variational_strategy="standard"
+variational_distribution="NGD"
+sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+                  ${n_train} ${n_test} ${num_inducing}\
+                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
