@@ -31,9 +31,11 @@ tqdm           =run_params['tqdm']
 inducing_data_initialization =run_params['inducing_data_initialization'] 
 use_ngd =run_params['use_ngd']
 use_ciq =run_params['use_ciq']
+num_contour_quadrature= run_params['num_contour_quadrature']
 learning_rate_hypers = run_params['learning_rate_hypers']
 learning_rate_ngd    = run_params['learning_rate_ngd']
-gamma    = run_params['gamma']
+lr_gamma    = run_params['lr_gamma']
+lr_benchmarks = run_params['lr_benchmarks']
 #lr_sched = run_params['lr_sched']
 seed     = run_params['seed']
 base_name = run_params['base_name']
@@ -41,11 +43,10 @@ data_file = run_params['data_file']
 mode = run_params['mode']
 
 # make the learning rate schedule
-#lr_sched = lambda epoch: 1./(1+gamma*epoch)
-levels = np.array([20,150,300])
+#lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
 def lr_sched(epoch):
-  a = np.sum(levels > epoch)
-  return (1./gamma)**a
+  a = np.sum(lr_benchmarks > epoch)
+  return (1./lr_gamma)**a
 
 # set the seed
 torch.random.manual_seed(seed)
@@ -89,6 +90,7 @@ if mode == "DSVGP":
                         use_ngd = use_ngd,
                         use_ciq = use_ciq,
                         lr_sched=lr_sched,
+                        num_contour_quadrature=num_contour_quadrature,
                         tqdm=tqdm,
                         )
   t2 = time.time()	
@@ -116,10 +118,16 @@ elif mode == "SVGP":
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
   t1 = time.time()	
   model,likelihood = traditional_vi.train_gp(train_dataset,dim,
-                                              num_inducing=num_inducing,
-                                              minibatch_size=minibatch_size,
-                                              num_epochs=num_epochs,
-                                              tqdm=tqdm)
+                                            num_inducing=num_inducing,
+                                            minibatch_size=minibatch_size,
+                                            num_epochs=num_epochs,
+                                            use_ngd=use_ngd,
+                                            use_ciq=use_ciq,
+                                            learning_rate_hypers=learning_rate_hypers,
+                                            learning_rate_ngd=learning_rate_ngd,
+                                            lr_sched=lr_sched,
+                                            num_contour_quadrature=num_contour_quadrature,
+                                            tqdm=False)
   t2 = time.time()	
   train_time = t2 - t1
   
