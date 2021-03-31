@@ -18,16 +18,18 @@ dataset="synthetic-Branin" # synthetic/real - dataset name
 # dataset="real-helens"
 
 # exp setups
+# fix some setups for this dataset
 n_train=10000
 n_test=10000
+batch_size=512
+watch_model=True
+# read other arguments from command line when sbatch this job
 num_inducing=${1}
 num_directions=${2}
 num_epochs=${3}
-batch_size=512
 lr=${4}
 lr_ngd=${5}
 num_contour_quad=${6}
-watch_model=True
 exp_name=${7}
 seed=${8}
 # compare different methods, comment out the chunk if not comparing with this method
