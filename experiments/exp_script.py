@@ -19,10 +19,12 @@ import traditional_vi
 from load_data import *
 from metrics import *
 from synthetic_functions import *
-
+try: # import wandb if watch model on weights&biases
+  import wandb
+except:
+  pass
 
 def main(**args):
-    # seed
     torch.random.manual_seed(args["seed"])
     dataset_type = args["dataset"].split('-')[0]
     dataset_name = args["dataset"].split('-')[1]
@@ -34,15 +36,22 @@ def main(**args):
     num_epochs = args["num_epochs"]
     variational_dist = args["variational_distribution"]
     variational_strat = args["variational_strategy"]
+    exp_name = args["exp_name"]
 
     if args["model"]=="SVGP":
         args["derivative"]=False
-        expname_train = f"SVGP_{dataset_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_seed{args['seed']}"
+        expname_train = f"SVGP_{dataset_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_exp{exp_name}"
     elif args["model"]=="DSVGP":
         args["derivative"]=True
-        expname_train = f"DSVGP_{dataset_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_seed{args['seed']}"
+        expname_train = f"DSVGP_{dataset_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
     print(f"\n\n\nStart Experiment: {expname_test}")
+
+    if args["watch_model"]: # watch model on weights&biases
+        print("Experiment settings:")
+        print(args)
+        wandb.init(project='DSVGP', entity='xinranzhu',
+                name=expname_test)
 
     # generate training data, x in unit cube, y normalized, derivative rescaled
     if dataset_type=="synthetic":
@@ -60,7 +69,7 @@ def main(**args):
         data_loader = eval(f"load_{dataset_name}")
         data_src_path = f"../data/{dataset_name}"
         train_dataset, test_dataset, dim = data_loader(data_src_path, **args)
-
+        
     assert num_inducing < n
     assert num_directions <= dim
     assert minibatch_size <= n
@@ -88,7 +97,8 @@ def main(**args):
                                                    num_inducing=num_inducing,
                                                    minibatch_size=minibatch_size,
                                                    num_epochs=num_epochs,
-                                                   tqdm=False)
+                                                   tqdm=False,
+                                                   watch_model=args["watch_model"])
     elif args["model"]=="DSVGP":
         use_ngd=True if variational_strat == "CIQ" else False
         use_ngd=True if variational_dist == "NGD" else False
@@ -106,7 +116,8 @@ def main(**args):
                                 lr_sched = lr_sched,
                                 learning_rate_ngd = learning_rate_ngd,
                                 learning_rate_hypers = learning_rate_hypers,
-                                num_contour_quadrature = num_contour_quadrature
+                                num_contour_quadrature = num_contour_quadrature,
+                                watch_model=args["watch_model"]
                                 )
 
     if torch.cuda.is_available():
@@ -124,23 +135,31 @@ def main(**args):
     if args["save_model"]:
         torch.save(model.state_dict(), f"../data/{expname_train}.model")
 
+    # collect the test function values
+    test_f = torch.zeros(n_test)
+    for ii in range(n_test):
+        if args["model"] == "DSVGP":
+            test_f[ii] = test_dataset[ii][1][0] # function value
+        elif args["model"] == "SVGP":
+            test_f[ii] = test_dataset[ii][1] # function value
+
     # test
     if args["model"]=="SVGP":
         means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
                                                   num_inducing=num_inducing,
-                                                  minibatch_size=n_test)
+                                                  minibatch_size=minibatch_size)
         # metrics
-        test_mse = MSE(test_y.cpu(),means)
-        test_rmse = RMSE(test_y.cpu(),means)
+        test_mse = MSE(test_f.cpu(),means)
+        test_rmse = RMSE(test_f.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
                                     num_directions=num_directions,
-                                    minibatch_size=n_test,
+                                    minibatch_size=minibatch_size,
                                     minibatch_dim=num_directions)
         # compute MSE
-        test_mse = MSE(test_y.cpu()[:,0],means[::num_directions+1])
-        test_rmse = RMSE(test_y.cpu()[:,0],means[::num_directions+1])
+        test_mse = MSE(test_f.cpu(),means[::num_directions+1])
+        test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
@@ -164,6 +183,8 @@ if __name__ == "__main__":
     parser.add_argument("-ld", "--log-dir", type=str, default="./logs/")
     parser.add_argument("-dd", "--data-dir", type=str, default="./data/")
     parser.add_argument("-sm", "--save_model", type=bool, default=False)
+    parser.add_argument("--watch_model", type=bool, default=False)
+    parser.add_argument("--exp_name", type=str, default="-")
 
     # Dataset and model type
     #TODO: add real dataset experiment

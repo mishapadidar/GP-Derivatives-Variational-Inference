@@ -11,6 +11,10 @@ import gpytorch
 from matplotlib import pyplot as plt
 import numpy as np
 from utils.metrics import MSE
+try: # import wandb if watch model on weights&biases
+  import wandb
+except:
+  pass
 
 
 class GPModel(ApproximateGP):
@@ -26,7 +30,9 @@ class GPModel(ApproximateGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
 
-def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**args):
+def train_gp(train_dataset,dim,num_inducing=128,
+            minibatch_size=1,num_epochs=1,watch_model=False,
+            **args):
     
     print_loss=True
     train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
@@ -42,7 +48,9 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
     if torch.cuda.is_available():
         model = model.cuda()
         likelihood = likelihood.cuda()
-    
+    if watch_model:
+        wandb.watch(model)
+
     model.train()
     likelihood.train()
     optimizer = torch.optim.Adam([
@@ -73,6 +81,8 @@ def train_gp(train_dataset,dim,num_inducing=128,minibatch_size=1,num_epochs=1,**
             loss = -mll(output, y_batch)
             #print(loss.item())
             #print(loss.shape)
+            if watch_model:
+                wandb.log({"loss": loss.item()})
             if "tqdm" in args and args["tqdm"]:
                 epochs_iter.set_postfix(loss=loss.item())           
             loss.backward()

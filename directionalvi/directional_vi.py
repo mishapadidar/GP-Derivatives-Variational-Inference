@@ -13,6 +13,10 @@ sys.path.append("utils")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 from CiqDirectionalGradVariationalStrategy import CiqDirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
+try: # import wandb if watch model on weights&biases
+  import wandb
+except:
+  pass
 
 """Future Upgrades
 - don't include function values in every training iteration... be truly stochastic.
@@ -87,6 +91,7 @@ def train_gp(train_dataset,num_inducing=128,
   use_ciq=False,
   lr_sched=None,
   num_contour_quadrature=15,
+  watch_model=False,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -153,6 +158,8 @@ def train_gp(train_dataset,num_inducing=128,
   if torch.cuda.is_available():
     model = model.cuda()
     likelihood = likelihood.cuda()
+  if watch_model:
+    wandb.watch(model)
   # training mode
   model.train()
   likelihood.train()
@@ -217,6 +224,8 @@ def train_gp(train_dataset,num_inducing=128,
       hyperparameter_optimizer.zero_grad()
       output = model(x_batch,**kwargs)
       loss = -mll(output, y_batch)
+      if watch_model:
+        wandb.log({"loss": loss.item()})
       if "tqdm" in args and args["tqdm"]:
         epochs_iter.set_postfix(loss=loss.item())     
       loss.backward()
