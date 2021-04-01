@@ -24,7 +24,7 @@ def normalize(y, **kwargs):
         f = y[..., 0].reshape(len(y),1)
         g = y[..., 1:].reshape(len(y),-1)
         fcopy = np.array(f.flatten())
-        sigma = np.std(fcopy)
+        sigma = np.std(fcopy, ddof=1)
         f -= np.mean(fcopy)
         f /= sigma
         g /= sigma
