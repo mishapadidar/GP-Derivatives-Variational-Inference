@@ -40,18 +40,18 @@ def main(**args):
 
     if args["model"]=="SVGP":
         args["derivative"]=False
-        expname_train = f"SVGP_{dataset_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_exp{exp_name}"
+        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_exp{exp_name}"
     elif args["model"]=="DSVGP":
         args["derivative"]=True
-        expname_train = f"DSVGP_{dataset_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
+        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
-    print(f"\n\n\nStart Experiment: {expname_test}")
 
     if args["watch_model"]: # watch model on weights&biases
-        print("Experiment settings:")
-        print(args)
         wandb.init(project='DSVGP', entity='xinranzhu',
                 name=expname_test)
+        print("Experiment settings:")
+        print(args)
+    print(f"\n\n\nStart Experiment: {expname_test}")
 
     # generate training data, x in unit cube, y normalized, derivative rescaled
     if dataset_type=="synthetic":
@@ -151,7 +151,7 @@ def main(**args):
         # metrics
         test_mse = MSE(test_f.cpu(),means)
         test_rmse = RMSE(test_f.cpu(),means)
-        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
+        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
                                     num_directions=num_directions,
@@ -161,7 +161,7 @@ def main(**args):
         test_mse = MSE(test_f.cpu(),means[::num_directions+1])
         test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
         # compute mean negative predictive density
-        test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
+        test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f.cpu()).mean()
     
     if torch.cuda.is_available():
         end.record()
