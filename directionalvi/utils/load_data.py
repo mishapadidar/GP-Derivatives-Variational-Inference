@@ -23,6 +23,7 @@ def load_synthetic_data(test_fun, n, **kwargs):
         y = test_fun.evaluate_true_with_deriv(x)
     else:
         y = test_fun.evaluate_true(x)
+        print(y.shape)
     # normalize y values (with or without derivatives)
     normalize(y, **kwargs)
     if kwargs["derivative"]:
@@ -58,14 +59,15 @@ def load_helens(data_src_path, **args):
     y = torch.tensor(np.float64(mat['mth_verts'])).float()
     SCALE_Y_FACTOR = max(y)
     y = y/SCALE_Y_FACTOR
-    if args["derivative":]
+    if args["derivative"]:
         dy = torch.tensor(np.float64(mat['mth_grads'])).float()
         dy = dy / SCALE_Y_FACTOR #modify derivatives due to y-scaling
         dy[:, 0] = dy[:, 0]*SCALE_0_FACTOR #modify derivatives due to x-scaling
         dy[:, 1] = dy[:, 1]*SCALE_1_FACTOR
         data = torch.cat((y, dy), dim = 1).float()
     else:
-        data = y
+        data = y.squeeze(1)
+        
     #full_data = torch.cat((x, data), dim=1).float() #location concatenated with y and dy values
     if torch.cuda.is_available():
         x, data = x.cuda(), data.cuda()
