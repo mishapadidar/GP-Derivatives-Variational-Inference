@@ -23,7 +23,6 @@ def load_synthetic_data(test_fun, n, **kwargs):
         y = test_fun.evaluate_true_with_deriv(x)
     else:
         y = test_fun.evaluate_true(x)
-        print(y.shape)
     # normalize y values (with or without derivatives)
     normalize(y, **kwargs)
     if kwargs["derivative"]:
