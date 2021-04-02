@@ -19,52 +19,27 @@ dataset="real-helens"
 
 # exp setups
 # fix some setups for this dataset
-n_train=12636
-n_test=1404
+# n_train=12636
+# n_test=1404
+n_train=900
+n_test=13140
 batch_size=512
 watch_model=True
 # read other arguments from command line when sbatch this job
-num_inducing=${1}
-num_directions=${2}
-num_epochs=${3}
-lr=${4}
-lr_ngd=${5}
-num_contour_quad=${6}
+model=${1}
+variational_strategy=${2}
+variational_distribution=${3}
+num_inducing=${4}
+num_directions=${5}
+num_epochs=${6}
 exp_name=${7}
-seed=${8}
+lr=${8}
+lr_ngd=${9}
+num_contour_quad=${10}
+seed=${11}
 
 # compare different methods, comment out the chunk if not comparing with this method
 # find runlogs in logs folder
-
-model="DSVGP"
-variational_strategy="standard"
-variational_distribution="standard" 
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
-
-model="DSVGP"
-variational_strategy="standard"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
-
-model="DSVGP"
-variational_strategy="CIQ"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
-
-# for traditional SVGP, 
-# variational_strategy and variational_distribution don't matter, but need to pass in them.
-model="SVGP"
-variational_strategy="standard"
-variational_distribution="NGD"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\

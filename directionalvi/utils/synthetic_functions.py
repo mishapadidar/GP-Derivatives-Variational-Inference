@@ -19,16 +19,16 @@ class Branin_with_deriv(Branin):
     """
     def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
         val = super().evaluate_true(X)
-        val = val.unsqueeze(-1)
+        val = val.reshape(-1, 1)
         b = 5.1 / (4 * math.pi ** 2)
         c = 5 / math.pi
         t = 1 / (8 * math.pi)
         grad_x2 = 2 * (X[..., 1] - b * X[..., 0] ** 2 + c * X[..., 0] - 6)
-        t2 = -2 * b * X[..., 0] + c
-        t3 = - 10 * (1 - 1 / (8 * math.pi)) * torch.sin(X[..., 0])
-        grad_x1 = grad_x2 * t2 - t3
-        grad_x1 = grad_x1.unsqueeze(-1)
-        grad_x2 = grad_x2.unsqueeze(-1)
+        tmp2 = -2 * b * X[..., 0] + c
+        tmp3 = - 10 * (1 - t) * torch.sin(X[..., 0])
+        grad_x1 = grad_x2 * tmp2 + tmp3
+        grad_x1 = grad_x1.reshape(-1, 1)
+        grad_x2 = grad_x2.reshape(-1, 1)
         return torch.cat([val, grad_x1, grad_x2], 1)
 
     def get_bounds(self):
@@ -50,11 +50,11 @@ class SixHumpCamel_with_deriv(SixHumpCamel):
         x1 = X[..., 0]
         x2 = X[..., 1]
         val = super().evaluate_true(X)
-        val = val.unsqueeze(-1)
+        val = val.reshape(-1, 1)
         grad_x1 = x2 + 2 * x1 * (4 - 2.1 * x1 ** 2 + x1 ** 4 / 3) + (-4.2 * x1 + 4*x1**3 / 3) * x1 ** 2
         grad_x2 = x1 + 2*x2*(4 * x2 ** 2 - 4) + (8 * x2) * x2 ** 2
-        grad_x1 = grad_x1.unsqueeze(-1)
-        grad_x2 = grad_x2.unsqueeze(-1)
+        grad_x1 = grad_x1.reshape(-1, 1)
+        grad_x2 = grad_x2.reshape(-1, 1)
         return torch.cat([val, grad_x1, grad_x2], 1)
 
     def get_bounds(self):
@@ -76,11 +76,12 @@ class StyblinskiTang_with_deriv(StyblinskiTang):
         d = X.shape[-1]
         #print("d is: ", d)
         val = super().evaluate_true(X)
-        val = val.unsqueeze(-1) #make last dimension 1
+        val = val.reshape(-1, 1) #make last dimension 1
         #print("init val is: ", val)
         for i in range(d):
             cur_grad = 4* X[..., i] ** 3 - 32 * X[..., i] + 5
-            cur_grad = cur_grad.unsqueeze(-1)
+            # cur_grad = cur_grad.unsqueeze(-1)
+            cur_grad = cur_grad.reshape(-1, 1)
             val = torch.cat([val, cur_grad], 1)
         return val
 

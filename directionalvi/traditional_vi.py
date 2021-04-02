@@ -94,13 +94,21 @@ def train_gp(train_dataset,dim,num_inducing=128,
         ], lr=learning_rate_hypers)
     
     # learning rate scheduler
-    if lr_sched is None:
+    #lambda1 = lambda epoch: 1.0/(1 + epoch)
+    if lr_sched == "step_lr":
+        num_batches = int(np.ceil(n_samples/minibatch_size))
+        milestones = [int(num_epochs*num_batches/3), int(2*num_epochs*num_batches/3)]
+        hyperparameter_scheduler = torch.optim.lr_scheduler.MultiStepLR(hyperparameter_optimizer, milestones, gamma=0.1)
+        variational_scheduler = torch.optim.lr_scheduler.MultiStepLR(variational_optimizer, milestones, gamma=0.1)
+    elif lr_sched is None:
         lr_sched = lambda epoch: 1.0
-    hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
-    variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
-
-    # Our loss object. We're using the VariationalELBO
-    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
+        hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
+        variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
+    else:
+        hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
+        variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
+        # Our loss object. We're using the VariationalELBO
+        mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
         print_loss=False # don't print loss every 100 epoch if use tqdm
@@ -141,7 +149,11 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
             mini_steps +=1
             sys.stdout.flush()
-
+            
+        # print the loss
+        # if i % 20 == 0 and print_loss:
+        #     print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+     
     if print_loss:
         print(f"Done! loss: {loss.item()}")
 

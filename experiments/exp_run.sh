@@ -43,7 +43,7 @@ sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}
 # variational_strategy and variational_distribution don't matter, but need to pass in them.
 model="SVGP"
 variational_strategy="standard"
-variational_distribution="NGD"
+variational_distribution="standard"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\

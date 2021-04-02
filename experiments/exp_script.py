@@ -36,22 +36,28 @@ def main(**args):
     num_epochs = args["num_epochs"]
     variational_dist = args["variational_distribution"]
     variational_strat = args["variational_strategy"]
-    exp_name = args["exp_name"]
+    use_ngd=True if variational_dist == "NGD" else False
+    use_ciq=True if variational_strat == "CIQ" else False
+    learning_rate_hypers = args["lr"]
+    learning_rate_ngd = args["lr_ngd"]
+    lr_sched="step_lr"
+    num_contour_quadrature=args["num_contour_quad"]
 
+    exp_name = args["exp_name"]
     if args["model"]=="SVGP":
         args["derivative"]=False
-        expname_train = f"SVGP_{dataset_name}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_exp{exp_name}"
+        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     elif args["model"]=="DSVGP":
         args["derivative"]=True
-        expname_train = f"DSVGP_{dataset_name}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
+        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
-    print(f"\n\n\nStart Experiment: {expname_test}")
 
     if args["watch_model"]: # watch model on weights&biases
-        print("Experiment settings:")
-        print(args)
         wandb.init(project='DSVGP', entity='xinranzhu',
                 name=expname_test)
+        print("Experiment settings:")
+        print(args)
+    print(f"\n\n\nStart Experiment: {expname_test}")
 
     # generate training data, x in unit cube, y normalized, derivative rescaled
     if dataset_type=="synthetic":
@@ -77,6 +83,7 @@ def main(**args):
     # train
     if args["model"]=="SVGP":
         print("\n---Traditional SVGP---")
+        print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points")
     elif args["model"]=="DSVGP":
@@ -97,22 +104,22 @@ def main(**args):
                                                    num_inducing=num_inducing,
                                                    minibatch_size=minibatch_size,
                                                    num_epochs=num_epochs,
+                                                   use_ngd=use_ngd,
+                                                   use_ciq=use_ciq,
+                                                   learning_rate_hypers=learning_rate_hypers,
+                                                   learning_rate_ngd=learning_rate_ngd,
+                                                   lr_sched=lr_sched,
+                                                   num_contour_quadrature=num_contour_quadrature,
                                                    tqdm=False,
                                                    watch_model=args["watch_model"])
     elif args["model"]=="DSVGP":
-        use_ngd=True if variational_strat == "CIQ" else False
-        use_ngd=True if variational_dist == "NGD" else False
-        learning_rate_hypers = args["lr"]
-        learning_rate_ngd = args["lr_ngd"]
-        lr_sched=None
-        num_contour_quadrature=args["num_contour_quad"],
         model,likelihood = train_gp(train_dataset,
                                 num_inducing=num_inducing,
                                 num_directions=num_directions,
                                 minibatch_size=minibatch_size,
                                 minibatch_dim=num_directions,
                                 num_epochs=num_epochs,
-                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ngd,
+                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ciq,
                                 lr_sched = lr_sched,
                                 learning_rate_ngd = learning_rate_ngd,
                                 learning_rate_hypers = learning_rate_hypers,
@@ -151,7 +158,7 @@ def main(**args):
         # metrics
         test_mse = MSE(test_f.cpu(),means)
         test_rmse = RMSE(test_f.cpu(),means)
-        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
+        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
                                     num_directions=num_directions,
@@ -161,7 +168,7 @@ def main(**args):
         test_mse = MSE(test_f.cpu(),means[::num_directions+1])
         test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
         # compute mean negative predictive density
-        test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
+        test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f.cpu()).mean()
     
     if torch.cuda.is_available():
         end.record()
