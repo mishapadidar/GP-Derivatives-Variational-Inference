@@ -179,14 +179,21 @@ def train_gp(train_dataset,num_inducing=128,
         {'params': model.hyperparameters()},
         {'params': likelihood.parameters()},
     ], lr=learning_rate_hypers)
-  
+      
   # learning rate scheduler
   #lambda1 = lambda epoch: 1.0/(1 + epoch)
-  if lr_sched is None:
+  if lr_sched == "step_lr":
+    num_batches = int(np.ceil(n_samples/minibatch_size))
+    milestones = [int(num_epochs*num_batches/3), int(2*num_epochs*num_batches/3)]
+    hyperparameter_scheduler = torch.optim.lr_scheduler.MultiStepLR(hyperparameter_optimizer, milestones, gamma=0.1)
+    variational_scheduler = torch.optim.lr_scheduler.MultiStepLR(variational_optimizer, milestones, gamma=0.1)
+  elif lr_sched is None:
     lr_sched = lambda epoch: 1.0
-  hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
-  variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
-
+    hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
+    variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
+  else:
+    hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
+    variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
   # mll
   mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
 
@@ -234,13 +241,13 @@ def train_gp(train_dataset,num_inducing=128,
       variational_scheduler.step()
       hyperparameter_optimizer.step()
       hyperparameter_scheduler.step()
-
-      # print the loss
       if mini_steps % 10 == 0 and print_loss:
         print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
-
       mini_steps +=1
       sys.stdout.flush()
+    # print the loss
+    # if i % 20 == 0 and print_loss:
+    #   print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
      
   if print_loss:
     print(f"Done! loss: {loss.item()}")
