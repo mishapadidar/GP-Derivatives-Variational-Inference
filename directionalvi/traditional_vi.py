@@ -107,8 +107,9 @@ def train_gp(train_dataset,dim,num_inducing=128,
     else:
         hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
         variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
-        # Our loss object. We're using the VariationalELBO
-        mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
+
+    # Our loss object. We're using the VariationalELBO
+    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
         print_loss=False # don't print loss every 100 epoch if use tqdm
