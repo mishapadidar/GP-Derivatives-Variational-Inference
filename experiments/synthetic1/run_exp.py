@@ -6,9 +6,11 @@ import numpy as np
 
 # flags
 write_sbatch =True
-submit       =False
+submit       =True
 
-n_dir_list = [0]
+#ni_list = [512,1024, 2048, 4096]
+#for ni in ni_list:
+n_dir_list = [1,2,3,4,5]
 for dd in n_dir_list:
 
   # write a pickle file with the run info
@@ -16,7 +18,7 @@ for dd in n_dir_list:
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['mode']                         = "SVGP" # or SVGP
+  run_params['mode']                         = "DSVGP" # or SVGP
   run_params['n']                            = 10000 # number of total data points
   run_params['dim']                          = 5 # problem dimension
   run_params['num_inducing']                 = 512
