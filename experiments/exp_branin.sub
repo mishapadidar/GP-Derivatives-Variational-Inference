@@ -35,10 +35,11 @@ lr=${8}
 lr_ngd=${9}
 num_contour_quad=${10}
 seed=${11}
+lr_sched=${12}
 
 # compare different methods, comment out the chunk if not comparing with this method
 # find runlogs in logs folder
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
