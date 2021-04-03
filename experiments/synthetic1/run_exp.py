@@ -10,7 +10,7 @@ submit       =True
 
 #ni_list = [512,1024, 2048, 4096]
 #for ni in ni_list:
-n_dir_list = [1,2,3,4,5]
+n_dir_list = [1]
 for dd in n_dir_list:
 
   # write a pickle file with the run info
@@ -34,6 +34,7 @@ for dd in n_dir_list:
   run_params['learning_rate_ngd']            = 0.1
   run_params['lr_benchmarks']                = np.array([50,150,300])
   run_params['lr_gamma']                     = 10.0
+  run_params['lr_sched']                     = None
   run_params['data_file'] = "../../data/focus_w7x_dataset.csv"
   # seed and date
   now     = datetime.now()
