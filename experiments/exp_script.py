@@ -40,9 +40,13 @@ def main(**args):
     use_ciq=True if variational_strat == "CIQ" else False
     learning_rate_hypers = args["lr"]
     learning_rate_ngd = args["lr_ngd"]
-    lr_sched="step_lr"
     num_contour_quadrature=args["num_contour_quad"]
-
+    lr_sched=args["lr_sched"]
+    if lr_sched == "lambda_lr":
+        lr_sched = lambda epoch: 1.0/(1 + epoch)
+    elif lr_sched == "None":
+        lr_sched = None
+        
     exp_name = args["exp_name"]
     if args["model"]=="SVGP":
         args["derivative"]=False
@@ -211,6 +215,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--lr_ngd", type=float, default=0.1)
     parser.add_argument("--num_contour_quad", type=int, default=15)
+    parser.add_argument("--lr_sched", type=str, default=None)
 
     # Seed/splits/restarts
     parser.add_argument("-s", "--seed", type=int, default=0)

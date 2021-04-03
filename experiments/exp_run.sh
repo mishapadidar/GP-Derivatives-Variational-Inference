@@ -12,6 +12,9 @@ lr=0.01
 lr_ngd=0.1
 num_contour_quad=15
 watch_model=True
+exp_name="TEST"
+seed=0
+lr_sched="step_lr"
 # compare different methods, comment out the chunk if not comparing with this method
 # find runlogs in logs folder
 
@@ -21,7 +24,7 @@ variational_distribution="standard"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
 
 model="DSVGP"
 variational_strategy="standard"
@@ -29,7 +32,7 @@ variational_distribution="NGD"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
 
 model="DSVGP"
 variational_strategy="CIQ"
@@ -37,7 +40,7 @@ variational_distribution="NGD"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
 
 # for traditional SVGP, 
 # variational_strategy and variational_distribution don't matter, but need to pass in them.
@@ -47,4 +50,4 @@ variational_distribution="standard"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
