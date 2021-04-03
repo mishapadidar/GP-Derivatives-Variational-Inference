@@ -19,8 +19,6 @@ for dd in n_dir_list:
     os.mkdir(run_params_dir)
   run_params = {}
   run_params['mode']                         = "DSVGP" # or SVGP
-  run_params['n']                            = 10000 # number of total data points
-  run_params['dim']                          = 5 # problem dimension
   run_params['num_inducing']                 = 512
   run_params['num_directions']               = dd
   run_params['minibatch_size']               = 256
@@ -35,7 +33,7 @@ for dd in n_dir_list:
   run_params['lr_benchmarks']                = np.array([50,150,300])
   run_params['lr_gamma']                     = 10.0
   run_params['lr_sched']                     = None
-  run_params['data_file'] = "../../data/focus_w7x_dataset.csv"
+  run_params['data_file'] = "./synthetic1_dataset_10000_points_5_dim.pickle"
   # seed and date
   now     = datetime.now()
   seed    = int("%d%.2d%.2d%.2d%.2d"%(now.month,now.day,now.hour,now.minute,now.second))

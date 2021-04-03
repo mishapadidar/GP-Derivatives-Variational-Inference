@@ -41,8 +41,6 @@ seed     = run_params['seed']
 base_name = run_params['base_name']
 data_file = run_params['data_file']
 mode = run_params['mode']
-n = run_params['n']
-dim = run_params['dim']
 
 # make the learning rate schedule
 assert lr_sched in [None, "MultiStepLR", "LambdaLR"], "Not a valid choice of lr_sched"
@@ -69,32 +67,26 @@ if os.path.exists(data_dir) is False:
 if mode == "DSVGP": deriv=True
 elif mode == "SVGP": deriv = False
 
+# load the data
+d = pickle.load(open(data_file, "rb"))
+X = d['X']
+Y = d['Y']
+n,dim = X.shape
+if deriv == False:
+  Y = Y[:,0]
+
+# make a torch dataset
+dataset = TensorDataset(X,Y)
 
 # train-test split
 n_train = int(0.8*n)
 n_test  = int(0.2*n)
+train_dataset,test_dataset = torch.utils.data.random_split(dataset,[n_train,n_test])
 
-# objective
-def testf(x, deriv=True):
-  # f(x) = sin(2pi(x**2+y**2)), df/dx = cos(2pi(x**2+y**2))4pi*x
-  fx = torch.sin(2*np.pi*torch.sum(x**2,dim=1))
-  gx = 4*np.pi*( torch.cos(2*np.pi*torch.sum(x**2,dim=1)) * x.T).T
-  fx = fx.reshape(len(x),1)
-  if deriv:
-    return torch.cat([fx,gx],1)
-  else:   
-    return fx.squeeze(axis=1)
-# generate data
-train_x = torch.rand(n_train,dim)
-test_x  = torch.rand(n_test,dim)
-train_y = testf(train_x, deriv=deriv)
-test_y  = testf(test_x, deriv=deriv)
-if torch.cuda.is_available():
-    train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+#if torch.cuda.is_available():
+#    train_dataset, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
 
-# make datasets
-train_dataset = TensorDataset(train_x, train_y)
-test_dataset  = TensorDataset(test_x, test_y)
+# make dataloaders
 train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
 test_loader   = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
