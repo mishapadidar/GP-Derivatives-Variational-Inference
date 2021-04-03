@@ -36,18 +36,23 @@ learning_rate_hypers = run_params['learning_rate_hypers']
 learning_rate_ngd    = run_params['learning_rate_ngd']
 lr_gamma    = run_params['lr_gamma']
 lr_benchmarks = run_params['lr_benchmarks']
-#lr_sched = run_params['lr_sched']
+lr_sched = run_params['lr_sched']
 seed     = run_params['seed']
 base_name = run_params['base_name']
 data_file = run_params['data_file']
 mode = run_params['mode']
 
 # make the learning rate schedule
-#lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
-def lr_sched(epoch):
-  a = np.sum(lr_benchmarks < epoch)
-  # lr_gamma should be > 1
-  return (1./lr_gamma)**a
+assert lr_sched in [None, "MultiStepLR", "LambdaLR"], "Not a valid choice of lr_sched"
+if lr_sched is None:
+  pass
+elif lr_sched == "MultiStepLR":
+  def lr_sched(epoch):
+    a = np.sum(lr_benchmarks < epoch)
+    # lr_gamma should be > 1
+    return (1./lr_gamma)**a
+elif lr_sched == "LambdaLR":
+  lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
 
 # set the seed
 torch.random.manual_seed(seed)
