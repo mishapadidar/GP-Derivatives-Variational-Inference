@@ -61,6 +61,12 @@ def main(**args):
                 name=expname_test)
         print("Experiment settings:")
         print(args)
+        # save hyperparameters with wandb
+        wandb.config.learning_rate_hypers = learning_rate_hypers
+        wandb.config.learning_rate_ngd = learning_rate_ngd
+        wandb.config.lr_sched = lr_sched
+        wandb.config.num_contour_quadrature = num_contour_quadrature
+
     print(f"\n\n\nStart Experiment: {expname_test}")
 
     # generate training data, x in unit cube, y normalized, derivative rescaled
