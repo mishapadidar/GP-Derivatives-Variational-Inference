@@ -19,10 +19,10 @@ dataset="real-helens"
 
 # exp setups
 # fix some setups for this dataset
-# n_train=12636
-# n_test=1404
-n_train=900
-n_test=13140
+n_train=12636
+n_test=1404
+# n_train=900
+# n_test=13140
 batch_size=512
 watch_model=True
 # read other arguments from command line when sbatch this job
