@@ -11,3 +11,4 @@ experiments/.ipynb_checkpoints
 scratch*.ipynb
 experiments/wandb
 experiments/*.exp
+experiments/postprocess/

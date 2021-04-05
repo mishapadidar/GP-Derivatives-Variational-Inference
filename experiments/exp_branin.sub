@@ -19,7 +19,7 @@ dataset="synthetic-Branin" # synthetic/real - dataset name
 
 # exp setups
 # fix some setups for this dataset
-n_train=1000
+n_train=10000
 n_test=10000
 batch_size=512
 watch_model=True
