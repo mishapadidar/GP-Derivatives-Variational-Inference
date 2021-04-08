@@ -12,3 +12,4 @@ scratch*.ipynb
 experiments/wandb
 experiments/*.exp
 experiments/postprocess/
+*.ipynb
