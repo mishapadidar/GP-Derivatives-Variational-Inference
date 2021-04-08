@@ -64,18 +64,31 @@ data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
 
-# load a dataset
-if mode == "SVGP": gradients = False
-else: gradients = True
-dataset = csv_dataset(data_file,rescale=True,gradients=gradients)
-dim = len(dataset[0][0])
-n   = len(dataset)
+if mode == "DSVGP": deriv=True
+elif mode == "SVGP": deriv = False
+
+# load the data
+d = pickle.load(open(data_file, "rb"))
+X = d['X']
+Y = d['Y']
+n,dim = X.shape
+if deriv == False:
+  Y = Y[:,0]
+
+# make a torch dataset
+dataset = TensorDataset(X,Y)
 
 # train-test split
 n_train = int(0.8*n)
 n_test  = int(0.2*n)
-
 train_dataset,test_dataset = torch.utils.data.random_split(dataset,[n_train,n_test])
+
+#if torch.cuda.is_available():
+#    train_dataset, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+
+# make dataloaders
+train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+test_loader   = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
 
 if mode == "DSVGP":

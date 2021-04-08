@@ -18,26 +18,23 @@ import traditional_vi
 import testfun
 
 
-class GPModel(ApproximateGP):
-    def __init__(self, inducing_points):
-        variational_distribution = CholeskyVariationalDistribution(inducing_points.size(0))
-        variational_strategy = VariationalStrategy(self, inducing_points, variational_distribution, learn_inducing_locations=True)
-        super(GPModel, self).__init__(variational_strategy)
-        self.mean_module = gpytorch.means.ConstantMean()
-        self.covar_module = gpytorch.kernels.ScaleKernel(gpytorch.kernels.RBFKernel())
-
-    def forward(self, x):
-        mean_x = self.mean_module(x)
-        covar_x = self.covar_module(x)
-        return gpytorch.distributions.MultivariateNormal(mean_x, covar_x)
-
 # setups
 n  = 600
 n_test = 1000
 dim = 2
 num_inducing = 20
 minibatch_size = int(n/2)
-num_epochs = 1000
+num_epochs = 400
+use_ciq = True
+use_ngd = True
+learning_rate_hypers=0.01
+learning_rate_ngd=0.1
+# lr-schedule
+gamma  = 10.0
+levels = np.array([20,150,300])
+def lr_sched(epoch):
+  a = np.sum(levels > epoch)
+  return (1./gamma)**a
 
 # seed
 torch.random.manual_seed(0)
@@ -66,6 +63,11 @@ model,likelihood = traditional_vi.train_gp(train_dataset,dim,
                                             num_inducing=num_inducing,
                                             minibatch_size=minibatch_size,
                                             num_epochs=num_epochs,
+                                            use_ngd=use_ngd,
+                                            use_ciq=use_ciq,
+                                            learning_rate_hypers=learning_rate_hypers,
+                                            learning_rate_ngd=learning_rate_ngd,
+                                            lr_sched=lr_sched,
                                             tqdm=False)
 t2 = time.time_ns()	
 means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 

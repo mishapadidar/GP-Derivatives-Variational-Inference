@@ -26,7 +26,7 @@ n_test = 1000
 num_inducing = 20
 num_directions = 2
 minibatch_size = 200
-num_epochs = 100
+num_epochs = 400
 
 # seed
 torch.random.manual_seed(0)
@@ -35,13 +35,17 @@ tqdm = False
 # use data to initialize inducing stuff
 inducing_data_initialization = False
 # use natural gradients and/or CIQ
-use_ngd = False 
+use_ngd = True
 use_ciq = False
 num_contour_quadrature=15
 # learning rate
 learning_rate_hypers = 0.01
 learning_rate_ngd    = 0.1
-#lr_sched = lambda epoch: 1.0/(1+epoch)
+gamma  = 10.0
+#levels = np.array([20,150,300])
+#def lr_sched(epoch):
+#  a = np.sum(levels > epoch)
+#  return (1./gamma)**a
 lr_sched = None
 
 # training and testing data
