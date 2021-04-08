@@ -242,7 +242,10 @@ def train_gp(train_dataset,num_inducing=128,
       hyperparameter_optimizer.step()
       hyperparameter_scheduler.step()
       if mini_steps % 10 == 0 and print_loss:
-        print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+        means = output.mean[::num_directions+1]
+        stds  = output.variance.sqrt()[::num_directions+1]
+        nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch[::num_directions+1]).mean()
+        print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
       mini_steps +=1
       sys.stdout.flush()
     # print the loss
