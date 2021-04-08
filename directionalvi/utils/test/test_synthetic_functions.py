@@ -25,3 +25,9 @@ cc = SixHumpCamel_with_deriv()
 w = torch.rand(6, 2)
 y = cc.evaluate_true_with_deriv(w)
 print(y)
+
+#Hartmann
+print("hart")
+x = Hart_with_deriv()
+w = torch.rand(5, 6)
+print(x.evaluate_true_with_deriv(w))

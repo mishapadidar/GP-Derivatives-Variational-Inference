@@ -132,6 +132,7 @@ def main(**args):
         # metrics
         test_mse = MSE(test_y.cpu(),means)
         test_rmse = RMSE(test_y.cpu(),means)
+        test_mae = MAE(test_y.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
@@ -141,6 +142,7 @@ def main(**args):
         # compute MSE
         test_mse = MSE(test_y.cpu()[:,0],means[::num_directions+1])
         test_rmse = RMSE(test_y.cpu()[:,0],means[::num_directions+1])
+        test_mae = MAE(test_y.cpu()[:,0],means[::num_directions+1])
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_y.cpu()[:,0]).mean()
     
@@ -152,9 +154,9 @@ def main(**args):
     else:    
         t3 = time.time_ns()
         test_time = (t3-t2)/1e9	
-    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}.")
+    #print("hi")
+    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, MAE: {test_mae:.4e}, nll: {test_nll:.4e}.")
     print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
-
 
 if __name__ == "__main__":
     
