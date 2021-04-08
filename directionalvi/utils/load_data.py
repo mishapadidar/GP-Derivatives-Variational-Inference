@@ -66,7 +66,7 @@ def load_helens(data_src_path, filter_val, **args):
         dy[:, 1] = dy[:, 1]*SCALE_1_FACTOR
         data = torch.cat((y, dy), dim = 1).float()
     else:
-        data = y.squeeze(1)
+        data = y
     
     # FILTERING DATA
     # location concatenated with y and dy values, for the sake of filtering
@@ -88,17 +88,20 @@ def load_helens(data_src_path, filter_val, **args):
 
     #recover x and data from filtered concatenated values (arr)
     x = torch.tensor([item[0:2] for item in arr])
-    data = torch.tensor([item[2:] for item in arr])    
+    data = torch.tensor([item[2:] for item in arr]) 
+    data = data.squeeze(-1)   
   
     if torch.cuda.is_available():
         x, data = x.cuda(), data.cuda()
     dataset = TensorDataset(x, data)
-
+    print(data.shape)
     # Train-Test Split
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n, len_arr - n])#, generator=torch.Generator().manual_seed(42))
     dim = len(train_dataset[0][0])
     info_dict = {"SCALE_x0_FACTOR": SCALE_0_FACTOR.item(),
                  "SCALE_x1_FACTOR": SCALE_1_FACTOR.item(),
-                 "SCALE_Y_FACTOR": SCALE_Y_FACTOR[0].item()}
+                 "SCALE_Y_FACTOR": SCALE_Y_FACTOR[0].item(),
+                 "ntrain":n,
+                 "ntest": len_arr - n}
 
     return train_dataset, test_dataset, dim, info_dict

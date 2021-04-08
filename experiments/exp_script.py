@@ -88,7 +88,10 @@ def main(**args):
         #obtain train and test TensorDatasets
         data_loader = eval(f"load_{dataset_name}")
         data_src_path = f"../data/{dataset_name}"
-        train_dataset, test_dataset, dim, info_dict = data_loader(data_src_path, **args)
+        filter_val = 1.0
+        train_dataset, test_dataset, dim, info_dict = data_loader(data_src_path, filter_val, **args)
+        n = info_dict["n_train"]
+        n_test = info_dict["n_test"]
         
     assert num_inducing < n
     assert num_directions <= dim
