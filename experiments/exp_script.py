@@ -7,6 +7,7 @@ import argparse
 import random
 import time
 import sys
+import pickle
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 sys.path.append("../")
@@ -73,8 +74,11 @@ def main(**args):
     if dataset_type=="synthetic":
         testfun = eval(f"{dataset_name}_with_deriv")()
         dim = testfun.dim
-        train_x, train_y = load_synthetic_data(testfun, n, **args)
-        test_x, test_y = load_synthetic_data(testfun, n_test, **args)
+        x, y = load_synthetic_data(testfun, n+n_test, **args)
+        train_x = x[:n, :]
+        test_x = x[n:, :]
+        train_y = y[:n, ...]
+        test_y = y[n:, ...]
         #obtain train and test TensorDatasets
         if torch.cuda.is_available():
             train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
@@ -84,7 +88,7 @@ def main(**args):
         #obtain train and test TensorDatasets
         data_loader = eval(f"load_{dataset_name}")
         data_src_path = f"../data/{dataset_name}"
-        train_dataset, test_dataset, dim = data_loader(data_src_path, **args)
+        train_dataset, test_dataset, dim, info_dict = data_loader(data_src_path, **args)
         
     assert num_inducing < n
     assert num_directions <= dim
@@ -166,30 +170,17 @@ def main(**args):
                                                   num_inducing=num_inducing,
                                                   minibatch_size=minibatch_size)
         # metrics
-<<<<<<< HEAD
-        test_mse = MSE(test_y.cpu(),means)
-        test_rmse = RMSE(test_y.cpu(),means)
-        test_mae = MAE(test_y.cpu(),means)
-        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_y.cpu()).mean()
-=======
         test_mse = MSE(test_f.cpu(),means)
         test_rmse = RMSE(test_f.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f.cpu()).mean()
->>>>>>> 69ca24e9d013bb17120414901c53ad0a13b69c19
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
                                     num_directions=num_directions,
                                     minibatch_size=minibatch_size,
                                     minibatch_dim=num_directions)
         # compute MSE
-<<<<<<< HEAD
-        test_mse = MSE(test_y.cpu()[:,0],means[::num_directions+1])
-        test_rmse = RMSE(test_y.cpu()[:,0],means[::num_directions+1])
-        test_mae = MAE(test_y.cpu()[:,0],means[::num_directions+1])
-=======
         test_mse = MSE(test_f.cpu(),means[::num_directions+1])
         test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
->>>>>>> 69ca24e9d013bb17120414901c53ad0a13b69c19
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f.cpu()).mean()
     
@@ -205,6 +196,13 @@ def main(**args):
     print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, MAE: {test_mae:.4e}, nll: {test_nll:.4e}.")
     print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 
+    # save data for plots
+    if args["save_results"]:
+        summary=[n, train_dataset, n_test, test_dataset, means, info_dict]
+        pickle.dump(summary,open(f"./postprocess/exp_res/{expname_test}.pkl","wb"))
+
+
+
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser(description="parse args")
@@ -214,6 +212,7 @@ if __name__ == "__main__":
     parser.add_argument("-dd", "--data-dir", type=str, default="./data/")
     parser.add_argument("-sm", "--save_model", type=bool, default=False)
     parser.add_argument("--watch_model", type=bool, default=False)
+    parser.add_argument("--save_results", type=bool, default=False)
     parser.add_argument("--exp_name", type=str, default="-")
 
     # Dataset and model type

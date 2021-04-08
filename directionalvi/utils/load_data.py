@@ -52,8 +52,8 @@ def load_helens(data_src_path, filter_val, **args):
     # Apply normalizations to dataset 
     mat = scipy.io.loadmat(data_src_path)
     x = torch.tensor(np.float64(mat['mth_points'])).float()
-    SCALE_0_FACTOR = max(x[:, 0])
-    SCALE_1_FACTOR = max(x[:, 1])
+    SCALE_0_FACTOR = x[:, 0].max()
+    SCALE_1_FACTOR = x[:, 1].max()
     x[:, 0] = x[:, 0]/SCALE_0_FACTOR
     x[:, 1] = x[:, 1]/SCALE_1_FACTOR
     y = torch.tensor(np.float64(mat['mth_verts'])).float()
@@ -97,5 +97,8 @@ def load_helens(data_src_path, filter_val, **args):
     # Train-Test Split
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n, len_arr - n])#, generator=torch.Generator().manual_seed(42))
     dim = len(train_dataset[0][0])
+    info_dict = {"SCALE_x0_FACTOR": SCALE_0_FACTOR.item(),
+                 "SCALE_x1_FACTOR": SCALE_1_FACTOR.item(),
+                 "SCALE_Y_FACTOR": SCALE_Y_FACTOR[0].item()}
 
-    return train_dataset, test_dataset, dim
+    return train_dataset, test_dataset, dim, info_dict
