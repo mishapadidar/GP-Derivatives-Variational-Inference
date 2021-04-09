@@ -178,7 +178,7 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
             if torch.cuda.is_available():
                 x_batch = x_batch.cuda()
                 y_batch = y_batch.cuda()
-            preds = model(x_batch)
+            preds = likelihood(model(x_batch))
             means = torch.cat([means, preds.mean.cpu()])
             variances = torch.cat([variances, preds.variance.cpu()])
     means = means[1:]
