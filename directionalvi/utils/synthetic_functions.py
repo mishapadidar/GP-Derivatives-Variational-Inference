@@ -79,12 +79,12 @@ class StyblinskiTang_with_deriv(StyblinskiTang):
         val = val.reshape(-1, 1) #make last dimension 1
         #print("init val is: ", val)
         for i in range(d):
-            cur_grad = 4* X[..., i] ** 3 - 32 * X[..., i] + 5
+            cur_grad = 0.5*(4* X[..., i] ** 3 - 32 * X[..., i] + 5)
             # cur_grad = cur_grad.unsqueeze(-1)
             cur_grad = cur_grad.reshape(-1, 1)
             val = torch.cat([val, cur_grad], 1)
         return val
-
+    
     def get_bounds(self):
         lb = np.array([item[0] for item in self._bounds])
         ub = np.array([item[1] for item in self._bounds])
