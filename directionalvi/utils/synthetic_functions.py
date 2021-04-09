@@ -109,8 +109,9 @@ class Hart_with_deriv(Hartmann):
 
         for j in range(d):
             for i in range(4):
-                cur_grad = ALPHA[i] * exp(-1)
+                cur_grad = ALPHA[i] * math.exp(-1)
         pass
+    
 
     def get_bounds(self):
         lb = np.array([item[0] for item in self._bounds])
