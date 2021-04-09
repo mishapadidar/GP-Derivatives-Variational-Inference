@@ -1,0 +1,46 @@
+#!/bin/bash
+#SBATCH -J  basic                 # Job name
+#SBATCH -o ../slurm_output/job_%j.out      # Name of stdout output file(%j expands to jobId)
+#SBATCH -e ../slurm_output/job_%j.err      # Name of stderr output file(%j expands to jobId)
+#SBATCH --get-user-env                     # Tells sbatch to retrieve the users login environment
+#SBATCH -N 1                               # Total number of nodes requested
+#SBATCH -n 8                               # Total number of cores requested
+#SBATCH --mem=32G                          # Total amount of (real) memory requested (per node)
+#SBATCH -t 168:00:00                       # Time limit (hh:mm:ss)
+#SBATCH --partition=default_partition      # Request partition for resource 
+##SBATCH --exclude=marschner-compute01      # Request partition for resource 
+#SBATCH --gres=gpu:1                       # Specify a list of generic consumable resources (per node)
+
+set -e
+. /home/xz584/anaconda3/etc/profile.d/conda.sh
+conda activate DSVGP
+
+dataset="synthetic-StyblinskiTang" # synthetic/real - dataset name 
+
+# exp setups
+# fix some setups for this dataset
+n_train=10000
+n_test=10000
+batch_size=512
+watch_model=True
+# read other arguments from command line when sbatch this job
+model=${1}
+variational_strategy=${2}
+variational_distribution=${3}
+num_inducing=${4}
+num_directions=${5}
+num_epochs=${6}
+exp_name=${7}
+lr=${8}
+lr_ngd=${9}
+num_contour_quad=${10}
+seed=${11}
+lr_sched=${12}
+save_results=False
+
+# compare different methods, comment out the chunk if not comparing with this method
+# find runlogs in logs folder
+sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+                  ${n_train} ${n_test} ${num_inducing}\
+                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched} ${save_results}
