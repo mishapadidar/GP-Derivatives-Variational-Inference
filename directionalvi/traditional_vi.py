@@ -131,7 +131,8 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
             variational_optimizer.zero_grad()
             hyperparameter_optimizer.zero_grad()
-            output = model(x_batch)
+            #output = model(x_batch)
+            preds = likelihood(model(x_batch))
             loss = -mll(output, y_batch)
             if watch_model:
                 wandb.log({"loss": loss.item()})
