@@ -15,6 +15,7 @@ watch_model=${14}
 exp_name=${15}
 seed=${16}
 lr_sched=${17}
+save_results=${18}
 
 if [ ! -d "./logs" ]
 then
@@ -29,5 +30,5 @@ python -u exp_script.py \
     --num_epochs ${num_epochs} --batch_size ${batch_size} --model ${model}\
     --lr ${lr} --lr_ngd ${lr_ngd} --num_contour_quad ${num_contour_quad}\
     --watch_model ${watch_model} --exp_name ${exp_name} --seed ${seed}\
-    --lr_sched ${lr_sched}\
+    --lr_sched ${lr_sched} --save_results ${save_results}\
     2>&1 | tee logs/a.out_${dataset}_${model}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epoch${num_epochs}_${variational_distribution}_${variational_strategy}_exp${expname}

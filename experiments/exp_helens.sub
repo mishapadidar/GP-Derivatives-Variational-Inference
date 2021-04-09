@@ -7,7 +7,8 @@
 #SBATCH -n 8                               # Total number of cores requested
 #SBATCH --mem=32G                        # Total amount of (real) memory requested (per node)
 #SBATCH -t 168:00:00                       # Time limit (hh:mm:ss)
-#SBATCH --partition=default_gpu            # Request partition for resource 
+#SBATCH --partition=default_partition            # Request partition for resource 
+##SBATCH --exclude=marschner-compute01      # Request partition for resource 
 #SBATCH --gres=gpu:1                       # Specify a list of generic consumable resources (per node)
 
 set -e
@@ -21,6 +22,8 @@ dataset="real-helens"
 # fix some setups for this dataset
 n_train=12636
 n_test=1404
+# n_train=10000
+# n_test=4040
 # n_train=900
 # n_test=13140
 batch_size=512
@@ -38,10 +41,11 @@ lr_ngd=${9}
 num_contour_quad=${10}
 seed=${11}
 lr_sched=${12}
+save_results=${13}
 
 # compare different methods, comment out the chunk if not comparing with this method
 # find runlogs in logs folder
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched} ${save_results}
