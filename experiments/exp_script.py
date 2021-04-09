@@ -58,7 +58,7 @@ def main(**args):
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
-        wandb.init(project='DSVGP', entity='xinranzhu',
+        wandb.init(project='DSVGP', entity='jimmypotato',
                 name=expname_test)
         print("Experiment settings:")
         print(args)
@@ -74,7 +74,7 @@ def main(**args):
     if dataset_type=="synthetic":
         testfun = eval(f"{dataset_name}_with_deriv")()
         dim = testfun.dim
-        x, y = load_synthetic_data(testfun, n+n_test, **args)
+        x, y, info_dict = load_synthetic_data(testfun, n+n_test, **args)
         train_x = x[:n, :]
         test_x = x[n:, :]
         train_y = y[:n, ...]
@@ -175,6 +175,7 @@ def main(**args):
         # metrics
         test_mse = MSE(test_f.cpu(),means)
         test_rmse = RMSE(test_f.cpu(),means)
+        test_mae = MAE(test_f.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
@@ -184,6 +185,7 @@ def main(**args):
         # compute MSE
         test_mse = MSE(test_f.cpu(),means[::num_directions+1])
         test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
+        test_mae = MAE(test_f.cpu(),means[::num_directions+1])
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f.cpu()).mean()
     

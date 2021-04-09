@@ -31,7 +31,10 @@ def load_synthetic_data(test_fun, n, **kwargs):
         g = y[..., 1:].reshape(len(y),-1)
         g *= (ub - lb)
         y = torch.cat([f, g], 1)
-    return x_unit, y
+
+    # add scaling factors to info_dict for further accurate plot
+    info_dict = {}
+    return x_unit, y, info_dict
 
 #use real_helens when calling in exp_script.py
 def load_helens(data_src_path, filter_val, **args):
@@ -83,7 +86,7 @@ def load_helens(data_src_path, filter_val, **args):
     #    print(item)
     arr = [item for item in filtered]
     len_arr = len(arr) #number of total points after filtering
-    len_arr = len_arr - len_arr%100
+    # len_arr = len_arr - len_arr%100
     arr = arr[:len_arr]
 
     #recover x and data from filtered concatenated values (arr)
@@ -94,14 +97,13 @@ def load_helens(data_src_path, filter_val, **args):
     if torch.cuda.is_available():
         x, data = x.cuda(), data.cuda()
     dataset = TensorDataset(x, data)
-    print(data.shape)
     # Train-Test Split
     train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n, len_arr - n])#, generator=torch.Generator().manual_seed(42))
     dim = len(train_dataset[0][0])
     info_dict = {"SCALE_x0_FACTOR": SCALE_0_FACTOR.item(),
                  "SCALE_x1_FACTOR": SCALE_1_FACTOR.item(),
                  "SCALE_Y_FACTOR": SCALE_Y_FACTOR[0].item(),
-                 "ntrain":n,
-                 "ntest": len_arr - n}
-
+                 "n_train":n,
+                 "n_test": len_arr - n}
+    print(info_dict)
     return train_dataset, test_dataset, dim, info_dict
