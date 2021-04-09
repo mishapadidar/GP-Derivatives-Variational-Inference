@@ -39,7 +39,7 @@ class GPModel(gpytorch.models.ApproximateGP):
           variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             self.num_inducing + num_directional_derivs)
 
-        # variational strategy q(f)
+        # variational strategy q(f) 
         if "variational_strategy" in kwargs and kwargs["variational_strategy"] == "CIQ":
           variational_strategy = CiqDirectionalGradVariationalStrategy(self,
             inducing_points, inducing_directions,variational_distribution, learn_inducing_locations=True)
