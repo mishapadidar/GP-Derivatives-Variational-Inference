@@ -11,10 +11,12 @@ batch_size=512
 lr=0.01
 lr_ngd=0.1
 num_contour_quad=15
-watch_model=True
+watch_model=False
 exp_name="TEST"
 seed=0
 lr_sched="step_lr"
+save_results=False
+
 # compare different methods, comment out the chunk if not comparing with this method
 # find runlogs in logs folder
 
@@ -24,30 +26,30 @@ variational_distribution="standard"
 sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
                   ${n_train} ${n_test} ${num_inducing}\
                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
+                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched} ${save_results}
 
-model="DSVGP"
-variational_strategy="standard"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
+# model="DSVGP"
+# variational_strategy="standard"
+# variational_distribution="NGD"
+# sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
+#                   ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched} ${save_results}
 
-model="DSVGP"
-variational_strategy="CIQ"
-variational_distribution="NGD"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
+# model="DSVGP"
+# variational_strategy="CIQ"
+# variational_distribution="NGD"
+# sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
+#                   ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched} ${save_results}
 
 # for traditional SVGP, 
 # variational_strategy and variational_distribution don't matter, but need to pass in them.
-model="SVGP"
-variational_strategy="standard"
-variational_distribution="standard"
-sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
-                  ${n_train} ${n_test} ${num_inducing}\
-                  ${num_directions} ${num_epochs} ${batch_size} ${model}\
-                  ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched}
+# model="SVGP"
+# variational_strategy="standard"
+# variational_distribution="standard"
+# sh ./exp_setup.sh ${dataset} ${variational_strategy} ${variational_distribution}\
+#                   ${n_train} ${n_test} ${num_inducing}\
+#                   ${num_directions} ${num_epochs} ${batch_size} ${model}\
+#                   ${lr} ${lr_ngd} ${num_contour_quad} ${watch_model} ${exp_name} ${seed} ${lr_sched} ${save_results}

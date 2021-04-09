@@ -63,6 +63,26 @@ err_deriv = test_deriv(test_fun, 300)
 print(f"For {test_fun_name}, error in derivatives is {err_deriv:.4e}.")
 
 # stytang 
+<<<<<<< HEAD
+print("stytang")
+st = StyblinskiTang_with_deriv()
+w = torch.rand(5, 2)
+y = st.evaluate_true_with_deriv(w)
+print(y)
+
+#six_hump_camel
+print("six hump camel")
+cc = SixHumpCamel_with_deriv()
+w = torch.rand(6, 2)
+y = cc.evaluate_true_with_deriv(w)
+print(y)
+
+#Hartmann
+print("hart")
+x = Hart_with_deriv()
+w = torch.rand(5, 6)
+print(x.evaluate_true_with_deriv(w))
+=======
 test_fun_name = "StyblinskiTang"
 test_fun = eval(f"{test_fun_name}_with_deriv")()
 err_fun = test_fun_val(test_fun, 10)
@@ -84,3 +104,4 @@ err_fun = test_fun_val(test_fun, 10)
 print(f"\nFor {test_fun_name}, error in function values is {err_fun:.4e}.")
 err_deriv = test_deriv(test_fun, 300)
 print(f"For {test_fun_name}, error in derivatives is {err_deriv:.4e}.")
+>>>>>>> 69ca24e9d013bb17120414901c53ad0a13b69c19
