@@ -58,7 +58,7 @@ def main(**args):
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
-        wandb.init(project='DSVGP', entity='xinranzhu',
+        wandb.init(project='DSVGP', entity='jimmypotato',
                 name=expname_test)
         print("Experiment settings:")
         print(args)
@@ -216,8 +216,8 @@ if __name__ == "__main__":
     parser.add_argument("-ld", "--log-dir", type=str, default="./logs/")
     parser.add_argument("-dd", "--data-dir", type=str, default="./data/")
     parser.add_argument("-sm", "--save_model", type=bool, default=False)
-    parser.add_argument("--watch_model", type=bool, default=False)
-    parser.add_argument("--save_results", type=bool, default=False)
+    parser.add_argument("--watch_model", type=bool, default=False) 
+    parser.add_argument("--save_results", type=bool, default=False) #exp_script.py: error: argument --save_results: expected one argument
     parser.add_argument("--exp_name", type=str, default="-")
 
     # Dataset and model type

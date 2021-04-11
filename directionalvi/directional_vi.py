@@ -39,6 +39,7 @@ class GPModel(gpytorch.models.ApproximateGP):
           variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             self.num_inducing + num_directional_derivs)
 
+
         # variational strategy q(f)
         if "variational_strategy" in kwargs and kwargs["variational_strategy"] == "CIQ":
           variational_strategy = CiqDirectionalGradVariationalStrategy(self,
@@ -229,7 +230,8 @@ def train_gp(train_dataset,num_inducing=128,
 
       variational_optimizer.zero_grad()
       hyperparameter_optimizer.zero_grad()
-      output = model(x_batch,**kwargs)
+      #output = model(x_batch,**kwargs)
+      output = likelihood(model(x_batch,**kwargs))
       loss = -mll(output, y_batch)
       if watch_model:
         wandb.log({"loss": loss.item()})
@@ -283,7 +285,7 @@ def eval_gp(test_dataset,model,likelihood,num_directions=1,minibatch_size=1,mini
       derivative_directions = derivative_directions.repeat(len(x_batch),1)
       kwargs['derivative_directions'] = derivative_directions
       # predict
-      preds = model(x_batch,**kwargs)
+      preds = likelihood(model(x_batch,**kwargs))
       means = torch.cat([means, preds.mean.cpu()])
       variances = torch.cat([variances, preds.variance.cpu()])
 
