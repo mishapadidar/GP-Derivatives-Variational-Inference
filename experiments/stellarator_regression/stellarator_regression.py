@@ -38,6 +38,7 @@ learning_rate_ngd    = run_params['learning_rate_ngd']
 lr_gamma    = run_params['lr_gamma']
 lr_benchmarks = run_params['lr_benchmarks']
 lr_sched = run_params['lr_sched']
+mll_type = run_params['mll_type']
 seed     = run_params['seed']
 base_name = run_params['base_name']
 data_file = run_params['data_file']
@@ -50,8 +51,8 @@ if lr_sched is None:
 elif lr_sched == "MultiStepLR":
   def lr_sched(epoch):
     a = np.sum(lr_benchmarks < epoch)
-    # lr_gamma should be > 1
-    return (1./lr_gamma)**a
+    # lr_gamma should be in (0,1)
+    return (lr_gamma)**a
 elif lr_sched == "LambdaLR":
   lr_sched = lambda epoch: 1./(1+lr_gamma*np.sqrt(epoch))
 
@@ -97,6 +98,7 @@ if mode == "DSVGP":
                         use_ngd = use_ngd,
                         use_ciq = use_ciq,
                         lr_sched=lr_sched,
+                        mll_type=mll_type,
                         num_contour_quadrature=num_contour_quadrature,
                         tqdm=tqdm,
                         )
@@ -133,6 +135,7 @@ elif mode == "SVGP":
                                             learning_rate_hypers=learning_rate_hypers,
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched,
+                                            mll_type=mll_type,
                                             num_contour_quadrature=num_contour_quadrature,
                                             tqdm=False)
   t2 = time.time()	
