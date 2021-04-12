@@ -147,7 +147,10 @@ def train_gp(train_dataset,dim,num_inducing=128,
                 epochs_iter.set_postfix(loss=loss.item())           
 
             if mini_steps % 10 == 0 and print_loss:
-                print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+                means = output.mean
+                stds  = output.variance.sqrt()
+                nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch).mean()
+                print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
 
             mini_steps +=1
             sys.stdout.flush()
