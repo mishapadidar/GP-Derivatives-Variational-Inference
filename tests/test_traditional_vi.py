@@ -56,6 +56,7 @@ print("\n\n---Standard SVGP---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points")
 
+args={"verbose":True}
 
 # model training
 t1 = time.time_ns()	
@@ -68,7 +69,7 @@ model,likelihood = traditional_vi.train_gp(train_dataset,dim,
                                             learning_rate_hypers=learning_rate_hypers,
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched,
-                                            tqdm=False)
+                                            tqdm=False, **args)
 t2 = time.time_ns()	
 means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
                                             num_inducing=num_inducing,

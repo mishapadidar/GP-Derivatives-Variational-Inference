@@ -35,7 +35,7 @@ tqdm = False
 # use data to initialize inducing stuff
 inducing_data_initialization = False
 # use natural gradients and/or CIQ
-use_ngd = True
+use_ngd = False
 use_ciq = False
 num_contour_quadrature=15
 # learning rate
@@ -65,6 +65,7 @@ test_loader = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 print("\n\n---DirectionalGradVGP---")
 print(f"Start training with {n} trainig data of dim {dim}")
 print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+args={"verbose":True}
 t1 = time.time()	
 model,likelihood = train_gp(train_dataset,
                       num_inducing=num_inducing,
@@ -79,7 +80,7 @@ model,likelihood = train_gp(train_dataset,
                       use_ciq = use_ciq,
                       lr_sched=lr_sched,
                       num_contour_quadrature=num_contour_quadrature,
-                      tqdm=tqdm,
+                      tqdm=tqdm,**args
                       )
 t2 = time.time()	
 
