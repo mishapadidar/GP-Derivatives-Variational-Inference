@@ -10,7 +10,7 @@ import sys
 import gpytorch
 from matplotlib import pyplot as plt
 import numpy as np
-from utils.metrics import MSE
+from utils.count_params import count_params
 try: # import wandb if watch model on weights&biases
   import wandb
 except:
@@ -78,6 +78,9 @@ def train_gp(train_dataset,dim,num_inducing=128,
     model.train()
     likelihood.train()
     
+    if "verbose" in args and args["verbose"]:
+        param_total_dim = count_params(model,likelihood)
+
     # optimizers
     if use_ngd or use_ciq:
         variational_optimizer = gpytorch.optim.NGD(model.variational_parameters(), num_data=n_samples, lr=learning_rate_ngd)
@@ -120,7 +123,8 @@ def train_gp(train_dataset,dim,num_inducing=128,
         epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
     else:
         epochs_iter = range(num_epochs)
-        
+    
+    total_step=0
     for i in epochs_iter:
         if "tqdm" in args and args["tqdm"]:
             minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
@@ -149,19 +153,18 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
             if "tqdm" in args and args["tqdm"]:
                 epochs_iter.set_postfix(loss=loss.item())           
-
-            if mini_steps % 10 == 0 and print_loss:
+            
+            if total_step % 50 == 0 and print_loss:
                 means = output.mean
                 stds  = output.variance.sqrt()
                 nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch).mean()
-                print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
+                print(f"Epoch: {i}; total_step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
 
             mini_steps +=1
+            total_step +=1
             sys.stdout.flush()
-            
-        # print the loss
-        # if i % 20 == 0 and print_loss:
-        #     print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
+        
+    
      
     if print_loss:
         print(f"Done! loss: {loss.item()}")
