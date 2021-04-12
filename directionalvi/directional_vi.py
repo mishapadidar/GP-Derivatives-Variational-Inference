@@ -91,6 +91,7 @@ def train_gp(train_dataset,num_inducing=128,
   use_ngd=False,
   use_ciq=False,
   lr_sched=None,
+  mll_type="ELBO",
   num_contour_quadrature=15,
   watch_model=False,
   **args):
@@ -196,7 +197,10 @@ def train_gp(train_dataset,num_inducing=128,
     hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
     variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
   # mll
-  mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
+  if mll_type=="ELBO":
+    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=num_data)
+  elif mll_type=="PLL": 
+    mll = gpytorch.mlls.PredictiveLogLikelihood(likelihood, model, num_data=num_data)
 
   # train
   print_loss=True # if print loss every 100 steps

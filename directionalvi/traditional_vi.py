@@ -45,6 +45,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
             learning_rate_hypers=0.01,
             learning_rate_ngd=0.1,
             lr_sched=None,
+            mll_type="ELBO",
             num_contour_quadrature=15,
             watch_model=False,
             **args):
@@ -109,7 +110,10 @@ def train_gp(train_dataset,dim,num_inducing=128,
         variational_scheduler = torch.optim.lr_scheduler.LambdaLR(variational_optimizer, lr_lambda=lr_sched)
 
     # Our loss object. We're using the VariationalELBO
-    mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
+    if mll_type=="ELBO":
+        mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
+    elif mll_type=="PLL": 
+        mll = gpytorch.mlls.PredictiveLogLikelihood(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
         print_loss=False # don't print loss every 100 epoch if use tqdm
