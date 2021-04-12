@@ -1,4 +1,4 @@
-dataset="synthetic-Branin" # synthetic/real - dataset name 
+dataset="synthetic-StyblinskiTang" # synthetic/real - dataset name 
 # dataset="real-helens"
 
 # exp setups

@@ -12,3 +12,5 @@ experiments/wandb
 experiments/*.exp
 experiments/postprocess/
 *.ipynb
+experiments/*.sub
+experiments/*-copy.py
