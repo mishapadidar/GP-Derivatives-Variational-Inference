@@ -42,6 +42,7 @@ def main(**args):
     learning_rate_hypers = args["lr"]
     learning_rate_ngd = args["lr_ngd"]
     num_contour_quadrature=args["num_contour_quad"]
+    mll_type=args["mll_type"]
     lr_sched=args["lr_sched"]
     if lr_sched == "lambda_lr":
         lr_sched = lambda epoch: 1.0/(1 + epoch)
@@ -58,7 +59,7 @@ def main(**args):
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
-        wandb.init(project='DSVGP', entity='jimmypotato',
+        wandb.init(project='DSVGP', entity='xinranzhu',
                 name=expname_test)
         print("Experiment settings:")
         print(args)
@@ -67,6 +68,7 @@ def main(**args):
         wandb.config.learning_rate_ngd = learning_rate_ngd
         wandb.config.lr_sched = lr_sched
         wandb.config.num_contour_quadrature = num_contour_quadrature
+        wandb.config.mll_type = mll_type
 
     print(f"\n\n\nStart Experiment: {expname_test}")
 
@@ -127,7 +129,7 @@ def main(**args):
                                                    learning_rate_ngd=learning_rate_ngd,
                                                    lr_sched=lr_sched,
                                                    num_contour_quadrature=num_contour_quadrature,
-                                                   tqdm=False,
+                                                   tqdm=False,mll_type=mll_type,
                                                    watch_model=args["watch_model"])
     elif args["model"]=="DSVGP":
         model,likelihood = train_gp(train_dataset,
@@ -137,7 +139,7 @@ def main(**args):
                                 minibatch_dim=num_directions,
                                 num_epochs=num_epochs,
                                 tqdm=False, use_ngd=use_ngd, use_ciq=use_ciq,
-                                lr_sched = lr_sched,
+                                lr_sched = lr_sched,mll_type=mll_type,
                                 learning_rate_ngd = learning_rate_ngd,
                                 learning_rate_hypers = learning_rate_hypers,
                                 num_contour_quadrature = num_contour_quadrature,
@@ -239,7 +241,7 @@ if __name__ == "__main__":
     parser.add_argument("--lr_ngd", type=float, default=0.1)
     parser.add_argument("--num_contour_quad", type=int, default=15)
     parser.add_argument("--lr_sched", type=str, default=None)
-
+    parser.add_argument("--mll_type", type=str, default="ELBO", choices=["ELBO", "PLL"])
     # Seed/splits/restarts
     parser.add_argument("-s", "--seed", type=int, default=0)
     # parser.add_argument("-ns", "--num-splits", type=int, default=1)
