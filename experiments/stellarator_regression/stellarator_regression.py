@@ -18,6 +18,7 @@ from csv_dataset import csv_dataset
 from metrics import MSE
 import pickle
 
+#torch.set_default_dtype(torch.float64) 
 
 # load a pickle with the run params
 args = sys.argv
@@ -52,14 +53,14 @@ elif lr_sched == "MultiStepLR":
     # lr_gamma should be > 1
     return (1./lr_gamma)**a
 elif lr_sched == "LambdaLR":
-  lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
+  lr_sched = lambda epoch: 1./(1+lr_gamma*np.sqrt(epoch))
 
 # set the seed
 torch.random.manual_seed(seed)
 
 # output file names
 data_dir = "./output/"
-model_filename = data_dir + base_name + ".model"
+model_filename = data_dir + "model_" + base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
