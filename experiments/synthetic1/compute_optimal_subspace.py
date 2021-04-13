@@ -20,7 +20,7 @@ def compute_optimal_subspace_projection(G,X,k):
   #G =  U[:,:k] @ np.diag(S[:k])
   G =  G @ (VT.T)[:,:k]
   # project X as well
-  X = X @ (VT.T)[:,:k]
+  X = X @ (VT.T[:,:k])
   return G,X
 
 if __name__ == "__main__":
