@@ -37,6 +37,7 @@ learning_rate_ngd    = run_params['learning_rate_ngd']
 lr_gamma    = run_params['lr_gamma']
 lr_benchmarks = run_params['lr_benchmarks']
 lr_sched = run_params['lr_sched']
+mll_type = run_params['mll_type']
 seed     = run_params['seed']
 base_name = run_params['base_name']
 data_file = run_params['data_file']
@@ -50,7 +51,7 @@ elif lr_sched == "MultiStepLR":
   def lr_sched(epoch):
     a = np.sum(lr_benchmarks < epoch)
     # lr_gamma should be > 1
-    return (1./lr_gamma)**a
+    return (lr_gamma)**a
 elif lr_sched == "LambdaLR":
   lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
 
@@ -59,7 +60,7 @@ torch.random.manual_seed(seed)
 
 # output file names
 data_dir = "./output/"
-model_filename = data_dir + base_name + ".model"
+model_filename = data_dir + "model_"+ base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
@@ -109,6 +110,7 @@ if mode == "DSVGP":
                         use_ngd = use_ngd,
                         use_ciq = use_ciq,
                         lr_sched=lr_sched,
+                        mll_type=mll_type,
                         num_contour_quadrature=num_contour_quadrature,
                         tqdm=tqdm,
                         )
@@ -146,6 +148,7 @@ elif mode == "SVGP":
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched,
                                             num_contour_quadrature=num_contour_quadrature,
+                                            mll_type=mll_type,
                                             tqdm=False)
   t2 = time.time()	
   train_time = t2 - t1
@@ -185,3 +188,4 @@ outdata['test_time']  = test_time
 # add the run params
 outdata.update(run_params)
 pickle.dump(outdata,open(data_filename,"wb"))
+print(f"Dropped file: {data_filename}")
