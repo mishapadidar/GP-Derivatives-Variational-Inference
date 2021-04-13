@@ -13,8 +13,8 @@ def testf(x, deriv=True):
   else:   
     return fx.squeeze(axis=1)
 
-n  = 10000
-dim = 5
+n  = 20000
+dim = 12
 X = torch.rand(n,dim)
 Y = testf(X)
 d ={}
