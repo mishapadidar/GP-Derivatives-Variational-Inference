@@ -1,39 +1,39 @@
 import matplotlib.pyplot as plt
+import seaborn as sns
+import pandas as pd
 import pickle
 import numpy as np
 import glob
 
 # read the data
-dsvgp_files = glob.glob("./output/data_synthetic1_DSVGP*.pickle")
-svgp_files = glob.glob("./output/data_synthetic1_SVGP*.pickle")
+data_files = glob.glob("./output/data*.pickle")
 
-M_size = [[],[]] # matrix size
-NLL =[[],[]]
-for ff in dsvgp_files:
+data = []
+for ff in data_files:
+  # attributes
+  attrib = {}
   # load
   d = pickle.load(open(ff, "rb"))  
-  ni = d['num_inducing']
-  nd = d['num_directions']
-  nll = d['test_nll']
-  NLL[0].append(nll.item())
-  M_size[0].append(ni*(nd+1))
-for ff in svgp_files:
-  # load
-  d = pickle.load(open(ff, "rb"))  
-  ni = d['num_inducing']
-  nd = d['num_directions']
-  nll = d['test_nll']
-  NLL[1].append(nll.item())
-  M_size[1].append(ni)
+  attrib['mode']= d['mode']
+  attrib['ni']  = d['num_inducing']
+  if d['mode'] == 'SVGP':
+    d['num_directions']= 0
+  attrib['nd']  = d['num_directions']
+  attrib['M']   = d['num_inducing']*(d['num_directions']+1)
+  attrib['nll'] = d['test_nll'].item()
+  attrib['mse'] = d['test_mse'].item()
+  attrib['test_time']  = d['test_time']
+  attrib['train_time'] = d['train_time']
+  data.append(attrib)
+# make a pandas df
+df = pd.DataFrame.from_dict(data,orient='columns')
+print(df)
 
-print(M_size)
-print(NLL)
-plt.plot(M_size[0],NLL[0],label='dsvgp; ni=512')
-plt.plot(M_size[1],NLL[1],label='svgp')
-plt.yscale("symlog", linthreshy=0.01)
+# plot
+sns.set()
+sns.lineplot(x='M',y='nll',hue='nd',style='nd',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=3,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")
-plt.legend()
 plt.show()
 
