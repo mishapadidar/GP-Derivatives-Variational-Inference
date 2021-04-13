@@ -178,6 +178,7 @@ def main(**args):
         test_mse = MSE(test_f.cpu(),means)
         test_rmse = RMSE(test_f.cpu(),means)
         test_mae = MAE(test_f.cpu(),means)
+        test_smae = SMAE(test_f.cpu(),means)
         test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f.cpu()).mean()
     elif args["model"]=="DSVGP":
         means, variances = eval_gp( test_dataset,model,likelihood,
@@ -188,6 +189,7 @@ def main(**args):
         test_mse = MSE(test_f.cpu(),means[::num_directions+1])
         test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
         test_mae = MAE(test_f.cpu(),means[::num_directions+1])
+        test_smae = SMAE(test_f.cpu(),means[::num_directions+1])
         # compute mean negative predictive density
         test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f.cpu()).mean()
     
@@ -200,7 +202,7 @@ def main(**args):
         t3 = time.time_ns()
         test_time = (t3-t2)/1e9	
     #print("hi")
-    print(f"At {n_test} testing points, MSE: {test_mse:.4e}, RMSE: {test_rmse:.4e}, MAE: {test_mae:.4e}, nll: {test_nll:.4e}.")
+    print(f"At {n_test} testing points, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}, MAE: {test_mae:.4e}, MSE: {test_mse:.4e}, SMAE: {test_smae:.4e}")
     print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 
     # save data for plots
