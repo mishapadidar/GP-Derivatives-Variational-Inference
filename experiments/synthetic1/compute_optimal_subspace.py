@@ -1,5 +1,6 @@
 from scipy.sparse.linalg import svds
 import numpy as np
+import torch
 
 
 def compute_optimal_subspace_projection(G,k):
@@ -33,7 +34,7 @@ if __name__ == "__main__":
   # make a reduced dataset
   Y = np.hstack((f,P))
   d = {}
-  d['X'] = X
-  d['Y'] = Y
+  d['X'] = torch.tensor(X)
+  d['Y'] = torch.tensor(Y)
   pickle.dump(d,open(f"synthetic1_dataset_10000_points_5_dim_grad_dimredux_{k}_directions.pickle","wb"))
   
