@@ -161,9 +161,9 @@ def train_gp(train_dataset,dim,num_inducing=128,
                 epochs_iter.set_postfix(loss=loss.item())           
             
             if total_step % 25 == 0 and print_loss:
-                means = output.mean
-                stds  = output.variance.sqrt()
-                nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch).mean()
+                means = output.mean[::dim+1]
+                stds  = output.variance.sqrt()[::dim+1]
+                nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch[::dim+1]).mean()
                 print(f"Epoch: {i}; total_step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
 
             mini_steps +=1

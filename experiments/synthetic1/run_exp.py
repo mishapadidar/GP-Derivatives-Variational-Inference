@@ -8,32 +8,34 @@ import numpy as np
 write_sbatch =True
 submit       =True
 
-#ni_list = [512,1024, 2048, 4096]
-#for ni in ni_list:
-n_dir_list = [1]
-for dd in n_dir_list:
+dd = 1
+ni_list = np.array([200,400,600,800,1000,1200,1400,1600]) # d=0
+ni_list = (ni_list/(dd+1)).astype(int)
+for ni in ni_list:
 
   # write a pickle file with the run info
   run_params_dir = "./param_files/"
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['mode']                         = "DSVGP" # or SVGP
-  run_params['num_inducing']                 = 512
+  run_params['mode']                         = "DSVGP" # DSVGP, SVGP or GradSVGP
+  run_params['num_inducing']                 = ni
   run_params['num_directions']               = dd
-  run_params['minibatch_size']               = 256
-  run_params['num_epochs']                   = 800
+  run_params['minibatch_size']               = 512
+  run_params['num_epochs']                   = 1200
   run_params['tqdm']                         = False
   run_params['inducing_data_initialization'] = False
   run_params['use_ngd']                      = False
   run_params['use_ciq']                      = False
   run_params['num_contour_quadrature']       = 10 # gpytorch default=15
-  run_params['learning_rate_hypers']         = 0.01  
+  run_params['learning_rate_hypers']         = 0.01
   run_params['learning_rate_ngd']            = 0.1
-  run_params['lr_benchmarks']                = np.array([50,150,300])
-  run_params['lr_gamma']                     = 10.0
-  run_params['lr_sched']                     = None
+  run_params['lr_benchmarks']                = 20*np.array([800])
+  run_params['lr_gamma']                     = 0.1
+  run_params['lr_sched']                     = "MultiStepLR"
+  run_params['mll_type']                     = "PLL"
   run_params['data_file'] = "./synthetic1_dataset_10000_points_5_dim.pickle"
+  #run_params['data_file'] = f"./synthetic1_dataset_10000_points_5_dim_grad_dimredux_{run_params['num_directions']}_directions.pickle"
   # seed and date
   now     = datetime.now()
   seed    = int("%d%.2d%.2d%.2d%.2d"%(now.month,now.day,now.hour,now.minute,now.second))
@@ -47,6 +49,9 @@ for dd in n_dir_list:
               f"_ciq_{run_params['use_ciq']}_{barcode}"
   elif run_params['mode'] == "SVGP":
     base_name = f"synthetic1_SVGP_ni_{run_params['num_inducing']}"+\
+              f"_ne_{run_params['num_epochs']}_{barcode}"
+  elif run_params['mode'] == "GradSVGP":
+    base_name = f"synthetic1_GradSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
               f"_ne_{run_params['num_epochs']}_{barcode}"
   run_params['base_name']  = base_name
   param_filename = run_params_dir + "params_" +base_name + ".pickle"
