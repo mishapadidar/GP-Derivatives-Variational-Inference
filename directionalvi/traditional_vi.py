@@ -114,8 +114,10 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
     # Our loss object. We're using the VariationalELBO
     if mll_type=="ELBO":
+        print("Using ELBO")
         mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
     elif mll_type=="PLL": 
+        print("Using PLL")
         mll = gpytorch.mlls.PredictiveLogLikelihood(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
@@ -139,8 +141,10 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
             variational_optimizer.zero_grad()
             hyperparameter_optimizer.zero_grad()
-            #output = model(x_batch)
-            output = likelihood(model(x_batch))
+            if mll_type=="ELBO":
+                output = model(x_batch)
+            elif mll_type=="PLL": 
+                output = likelihood(model(x_batch))
             loss = -mll(output, y_batch)
             if watch_model:
                 wandb.log({"loss": loss.item()})
