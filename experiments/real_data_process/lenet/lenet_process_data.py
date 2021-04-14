@@ -106,6 +106,7 @@ def collect_initial_samples(loss_fun, data_loader, N_sample):
 
 def dict_to_flattened_array(params):
     '''
+    convert shape for Bayesian Optimization
     Inputs:
         params: stores param names and param values
     Outputs:
@@ -178,10 +179,11 @@ def main():
     loss_fun = nn.CrossEntropyLoss()
 
     # verify the correctness of sampled data 
-    test_get_loss_dloss(net, loss_fun, data_train_loader, N=40)
+    # test_get_loss_dloss(net, loss_fun, data_train_loader, N=40)
     
-    # collect data
-    params, loss_set, dloss_set = collect_initial_samples(loss_fun, data_train_loader, N_sample=1000)
+    # collect N_sample data points
+    N_sample = 1000
+    params, loss_set, dloss_set = collect_initial_samples(loss_fun, data_train_loader, N_sample=N_sample)
     #TODO: store these data?
 
 if __name__ == '__main__':
