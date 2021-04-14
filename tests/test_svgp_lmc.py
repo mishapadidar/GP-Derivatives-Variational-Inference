@@ -40,7 +40,6 @@ test_dataset = TensorDataset(test_x, test_y)
 
 print("\n\n---SVGP LMC---")
 print(f"Start training with {n} trainig data of dim {dim}")
-print(train_x.shape, train_y.shape)
 print(f"VI setups: {num_inducing} inducing points for each task")
 
 args={"verbose":True}

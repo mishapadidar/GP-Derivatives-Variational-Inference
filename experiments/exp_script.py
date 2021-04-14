@@ -16,6 +16,7 @@ sys.path.append("../directionalvi")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
 from directional_vi import *
+import grad_svgp
 import traditional_vi
 from load_data import *
 from metrics import *
@@ -56,6 +57,9 @@ def main(**args):
     elif args["model"]=="DSVGP":
         args["derivative"]=True
         expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
+    elif args["model"]=="GradSVGP":
+        args["derivative"]=True
+        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
@@ -90,8 +94,8 @@ def main(**args):
         #obtain train and test TensorDatasets
         data_loader = eval(f"load_{dataset_name}")
         data_src_path = f"../data/{dataset_name}"
-        filter_val = 1.0
-        train_dataset, test_dataset, dim, info_dict = data_loader(data_src_path, filter_val, **args)
+        args["filter_val"] = 1.0
+        train_dataset, test_dataset, dim, info_dict = data_loader(data_src_path, **args)
         n = info_dict["n_train"]
         n_test = info_dict["n_test"]
         
@@ -100,13 +104,13 @@ def main(**args):
     assert minibatch_size <= n
 
     # train
-    if args["model"]=="SVGP":
-        print("\n---Traditional SVGP---")
+    if args["model"]=="SVGP" or args["model"]=="GradSVGP":
+        print(f"\n---{args['model']}---")
         print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points")
     elif args["model"]=="DSVGP":
-        print("\n---D-SVGP---")
+        print(f"\n---{args['model']}---")
         print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
         print(f"Start training with {n} trainig data of dim {dim}")
         print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
@@ -123,13 +127,11 @@ def main(**args):
                                                    num_inducing=num_inducing,
                                                    minibatch_size=minibatch_size,
                                                    num_epochs=num_epochs,
-                                                   use_ngd=use_ngd,
-                                                   use_ciq=use_ciq,
+                                                   use_ngd=use_ngd, use_ciq=use_ciq,
                                                    learning_rate_hypers=learning_rate_hypers,
                                                    learning_rate_ngd=learning_rate_ngd,
-                                                   lr_sched=lr_sched,
+                                                   lr_sched=lr_sched,mll_type=mll_type,
                                                    num_contour_quadrature=num_contour_quadrature,
-                                                   tqdm=False,mll_type=mll_type,
                                                    watch_model=args["watch_model"])
     elif args["model"]=="DSVGP":
         model,likelihood = train_gp(train_dataset,
@@ -138,13 +140,22 @@ def main(**args):
                                 minibatch_size=minibatch_size,
                                 minibatch_dim=num_directions,
                                 num_epochs=num_epochs,
-                                tqdm=False, use_ngd=use_ngd, use_ciq=use_ciq,
+                                use_ngd=use_ngd, use_ciq=use_ciq,
                                 lr_sched = lr_sched,mll_type=mll_type,
                                 learning_rate_ngd = learning_rate_ngd,
                                 learning_rate_hypers = learning_rate_hypers,
                                 num_contour_quadrature = num_contour_quadrature,
-                                watch_model=args["watch_model"]
-                                )
+                                watch_model=args["watch_model"])
+    elif args["model"]=="GradSVGP":
+        model,likelihood = grad_svgp.train_gp(train_dataset,dim,num_inducing=num_inducing,
+                                            minibatch_size=minibatch_size,
+                                            num_epochs=num_epochs,
+                                            use_ngd=use_ngd,use_ciq=use_ciq,
+                                            learning_rate_hypers=learning_rate_hypers,
+                                            learning_rate_ngd=learning_rate_ngd,
+                                            lr_sched=lr_sched, mll_type=mll_type,
+                                            num_contour_quadrature = num_contour_quadrature,
+                                            watch_model=args["watch_model"])
 
     if torch.cuda.is_available():
         end.record()
@@ -168,31 +179,37 @@ def main(**args):
             test_f[ii] = test_dataset[ii][1][0] # function value
         elif args["model"] == "SVGP":
             test_f[ii] = test_dataset[ii][1] # function value
+        elif args["model"] == "GradSVGP":
+            test_f[ii] = test_dataset[ii][1][0] # function value
 
     # test
     if args["model"]=="SVGP":
         means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
                                                   num_inducing=num_inducing,
                                                   minibatch_size=minibatch_size)
-        # metrics
-        test_mse = MSE(test_f.cpu(),means)
-        test_rmse = RMSE(test_f.cpu(),means)
-        test_mae = MAE(test_f.cpu(),means)
-        test_smae = SMAE(test_f.cpu(),means)
-        test_nll = -torch.distributions.Normal(means, variances.sqrt()).log_prob(test_f.cpu()).mean()
+        pred_means = means
+        pred_variance = variances
     elif args["model"]=="DSVGP":
-        means, variances = eval_gp( test_dataset,model,likelihood,
+        means, variances = eval_gp(test_dataset,model,likelihood,
                                     num_directions=num_directions,
                                     minibatch_size=minibatch_size,
                                     minibatch_dim=num_directions)
-        # compute MSE
-        test_mse = MSE(test_f.cpu(),means[::num_directions+1])
-        test_rmse = RMSE(test_f.cpu(),means[::num_directions+1])
-        test_mae = MAE(test_f.cpu(),means[::num_directions+1])
-        test_smae = SMAE(test_f.cpu(),means[::num_directions+1])
-        # compute mean negative predictive density
-        test_nll = -torch.distributions.Normal(means[::num_directions+1], variances.sqrt()[::num_directions+1]).log_prob(test_f.cpu()).mean()
+        pred_means = means[::num_directions+1]
+        pred_variance = variances[::num_directions+1]
+    elif args["model"]=="GradSVGP":
+        means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
+                                            num_inducing=num_inducing,
+                                            minibatch_size=minibatch_size)
+        pred_means = means[::dim+1]
+        pred_variance = variances[::dim+1]
     
+    # metrics
+    test_mse = MSE(test_f.cpu(),pred_means)
+    test_rmse = RMSE(test_f.cpu(),pred_means)
+    test_mae = MAE(test_f.cpu(),pred_means)
+    test_smae = SMAE(test_f.cpu(),pred_means)
+    test_nll = -torch.distributions.Normal(pred_means, pred_variance.sqrt()).log_prob(test_f.cpu()).mean()
+
     if torch.cuda.is_available():
         end.record()
         torch.cuda.synchronize()
@@ -201,7 +218,6 @@ def main(**args):
     else:    
         t3 = time.time_ns()
         test_time = (t3-t2)/1e9	
-    #print("hi")
     print(f"At {n_test} testing points, RMSE: {test_rmse:.4e}, nll: {test_nll:.4e}, MAE: {test_mae:.4e}, MSE: {test_mse:.4e}, SMAE: {test_smae:.4e}")
     print(f"Training time: {train_time:.2f} sec, testing time: {test_time:.2f} sec")
 
