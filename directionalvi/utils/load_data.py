@@ -1,6 +1,7 @@
 from synthetic_functions import *
 from rescale import *
 import scipy.io
+import torch
 from torch.utils.data import TensorDataset, DataLoader
 
 def load_synthetic_data(test_fun, n, **kwargs):
@@ -37,7 +38,7 @@ def load_synthetic_data(test_fun, n, **kwargs):
     return x_unit, y, info_dict
 
 #use real_helens when calling in exp_script.py
-def load_helens(data_src_path, filter_val, **args):
+def load_helens(data_src_path, **args):
     """
     load synthetic data 
     Input: 
@@ -50,6 +51,7 @@ def load_helens(data_src_path, filter_val, **args):
     """
     torch.random.manual_seed(args["seed"])
     n = args["n_train"]
+    filter_val = args["filter_val"]
     #n_test = args["n_test"]
 
     # Apply normalizations to dataset 
@@ -106,4 +108,39 @@ def load_helens(data_src_path, filter_val, **args):
                  "n_train":n,
                  "n_test": len_arr - n}
     print(info_dict)
+    return train_dataset, test_dataset, dim, info_dict
+
+
+def load_3droad(data_src_path, **args):
+    data = torch.Tensor(scipy.io.loadmat(data_src_path)['data'])
+    X = data[:, :-2]
+    X = X - X.min(0)[0]
+    X = 2 * (X / X.max(0)[0]) - 1
+    y = data[:, -1]
+    y.sub_(y.mean(0)).div_(y.std(0))
+
+    # shuffle the data
+    torch.random.manual_seed(args["seed"])
+    indices = torch.randperm(X.size(0))[:326155]
+    X = X[indices]
+    y = y[indices]
+    dim = X.shape[-1]
+
+    train_n = args["n_train"]
+    # train_n = int(floor(0.8 * len(X)))
+    train_x = X[:train_n, :].contiguous()
+    train_y = y[:train_n].contiguous()
+
+    test_x = X[train_n:, :].contiguous()
+    test_y = y[train_n:].contiguous()
+
+    if torch.cuda.is_available():
+        train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+
+    train_dataset = TensorDataset(train_x, train_y)
+    test_dataset = TensorDataset(test_x, test_y)
+    
+    info_dict = {"n_train":train_n,
+                 "n_test": len(X) - train_n}
+
     return train_dataset, test_dataset, dim, info_dict
