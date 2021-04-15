@@ -94,7 +94,7 @@ def train_gp(train_dataset,num_inducing=128,
   lr_sched=None,
   mll_type="ELBO",
   num_contour_quadrature=15,
-  watch_model=False,
+  watch_model=False,gamma=0.1,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -191,8 +191,8 @@ def train_gp(train_dataset,num_inducing=128,
   if lr_sched == "step_lr":
     num_batches = int(np.ceil(n_samples/minibatch_size))
     milestones = [int(num_epochs*num_batches/3), int(2*num_epochs*num_batches/3)]
-    hyperparameter_scheduler = torch.optim.lr_scheduler.MultiStepLR(hyperparameter_optimizer, milestones, gamma=0.1)
-    variational_scheduler = torch.optim.lr_scheduler.MultiStepLR(variational_optimizer, milestones, gamma=0.1)
+    hyperparameter_scheduler = torch.optim.lr_scheduler.MultiStepLR(hyperparameter_optimizer, milestones, gamma=gamma)
+    variational_scheduler = torch.optim.lr_scheduler.MultiStepLR(variational_optimizer, milestones, gamma=gamma)
   elif lr_sched is None:
     lr_sched = lambda epoch: 1.0
     hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
