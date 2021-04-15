@@ -184,7 +184,8 @@ def main():
     # collect N_sample data points
     N_sample = 1000
     params, loss_set, dloss_set = collect_initial_samples(loss_fun, data_train_loader, N_sample=N_sample)
-    #TODO: store these data?
+    
+    #TODO: store data
 
 if __name__ == '__main__':
     main()
