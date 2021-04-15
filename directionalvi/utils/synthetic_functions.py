@@ -172,7 +172,7 @@ class Welch_with_deriv(Welch):
         x20 = X[..., 19]
         val = super().evaluate_true(X)
         val = val.reshape(*X.shape[:-1], 1)
-        grad_x1 = (-5*x12/(1+x1)/(1+x1) - 5).reshape(*X.shape[:-1],1)
+        grad_x1 = (-5*x12/(1+x1)/(1+x1)).reshape(*X.shape[:-1],1)
         grad_x2 = torch.tensor(0.05).repeat(*X.shape[:-1],1)
         grad_x3 =  torch.tensor(0.08).repeat(*X.shape[:-1],1)
         grad_x4 =  (10*(x4-x20)).reshape(*X.shape[:-1],1)
@@ -190,7 +190,7 @@ class Welch_with_deriv(Welch):
         grad_x16 =  torch.tensor(0.).repeat(*X.shape[:-1],1)
         grad_x17 =  torch.tensor(-0.01).repeat(*X.shape[:-1],1)
         grad_x18 =  torch.tensor(-0.03).repeat(*X.shape[:-1],1)
-        grad_x19 =  (120*x19**2).reshape(*X.shape[:-1],1)
+        grad_x19 =  (120*x19**2-5).reshape(*X.shape[:-1],1)
         grad_x20 =  (-10*(x4 - x20)).reshape(*X.shape[:-1],1)
         
         return torch.cat([val, grad_x1, grad_x2,
@@ -200,6 +200,7 @@ class Welch_with_deriv(Welch):
                          grad_x12, grad_x13, grad_x14, 
                          grad_x15, grad_x16, grad_x17,
                          grad_x18, grad_x19, grad_x20], 1)
+
 
     def get_bounds(self):
             lb = np.array([item[0] for item in self._bounds])

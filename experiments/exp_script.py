@@ -28,6 +28,7 @@ except:
   pass
 
 def main(**args):
+    torch.set_default_dtype(torch.float64)
     torch.random.manual_seed(args["seed"])
     dataset_type = args["dataset"].split('-')[0]
     dataset_name = args["dataset"].split('-')[1]
@@ -55,12 +56,9 @@ def main(**args):
     if args["model"]=="SVGP":
         args["derivative"]=False
         expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
-    elif args["model"]=="DSVGP":
+    elif args["model"]=="DSVGP" or args["model"]=="GradSVGP":
         args["derivative"]=True
         expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
-    elif args["model"]=="GradSVGP":
-        args["derivative"]=True
-        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
@@ -104,13 +102,15 @@ def main(**args):
 
     # active subspace for GradSVGP
     if args["model"]=="GradSVGP" and num_directions < dim:
-        G_train, train_x, P = compute_optimal_subspace_projection(train_y[:, 1:].numpy(),train_x.numpy(),num_directions):
-        # train_x, train_y, test_x, test_y
-        train_x = torch.tensor(train_x, dtype=test_x.dtype)
-        test_x = test_x@P
+        G_train, train_x, P = compute_optimal_subspace_projection((train_y[:, 1:]).cpu().numpy(),train_x.cpu().numpy(),num_directions)
+        P = torch.tensor(P, dtype=train_y.dtype)
         G_train = torch.tensor(G_train, dtype=train_y.dtype)
+        train_x = torch.tensor(train_x, dtype=test_x.dtype)
+        if torch.cuda.is_available():
+            P, G_train,train_x = P.cuda(), G_train.cuda(), train_x.cuda(), 
         train_y = torch.cat([train_y[:,0:1],G_train], 1)
-        G_test = test_y[:,1:] @ P
+        test_x = test_x@P
+        G_test = test_y[:,1:]@P
         test_y =  torch.cat([test_y[:,0:1], G_test], 1)
 
     train_dataset = TensorDataset(train_x,train_y)
@@ -187,6 +187,7 @@ def main(**args):
                                                   minibatch_size=minibatch_size)
         pred_means = means
         pred_variance = variances
+        test_f = test_y
     elif args["model"]=="DSVGP":
         means, variances = eval_gp(test_dataset,model,likelihood,
                                     num_directions=num_directions,
@@ -194,18 +195,20 @@ def main(**args):
                                     minibatch_dim=num_directions)
         pred_means = means[::num_directions+1]
         pred_variance = variances[::num_directions+1]
+        test_f = test_y[:,0]
     elif args["model"]=="GradSVGP":
         means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
                                             num_inducing=num_inducing,
                                             minibatch_size=minibatch_size)
-        pred_means = means[::dim+1]
-        pred_variance = variances[::dim+1]
+        pred_means = means[::num_directions+1]
+        pred_variance = variances[::num_directions+1]
+        test_f = test_y[:,0]
     
     # metrics
-    test_mse = MSE(test_y[:,0].cpu(),pred_means)
-    test_rmse = RMSE(test_y[:,0].cpu(),pred_means)
-    test_mae = MAE(test_y[:,0].cpu(),pred_means)
-    test_smae = SMAE(test_y[:,0].cpu(),pred_means)
+    test_mse = MSE(test_f.cpu(),pred_means)
+    test_rmse = RMSE(test_f.cpu(),pred_means)
+    test_mae = MAE(test_f.cpu(),pred_means)
+    test_smae = SMAE(test_f.cpu(),pred_means)
     test_nll = -torch.distributions.Normal(pred_means, pred_variance.sqrt()).log_prob(test_f.cpu()).mean()
 
     if torch.cuda.is_available():
