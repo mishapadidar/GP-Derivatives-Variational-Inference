@@ -47,7 +47,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
             lr_sched=None,
             mll_type="ELBO",
             num_contour_quadrature=15,
-            watch_model=False,
+            watch_model=False,gamma=0.1,
             **args):
     
     print_loss=True
@@ -102,8 +102,8 @@ def train_gp(train_dataset,dim,num_inducing=128,
     if lr_sched == "step_lr":
         num_batches = int(np.ceil(n_samples/minibatch_size))
         milestones = [int(num_epochs*num_batches/3), int(2*num_epochs*num_batches/3)]
-        hyperparameter_scheduler = torch.optim.lr_scheduler.MultiStepLR(hyperparameter_optimizer, milestones, gamma=0.1)
-        variational_scheduler = torch.optim.lr_scheduler.MultiStepLR(variational_optimizer, milestones, gamma=0.1)
+        hyperparameter_scheduler = torch.optim.lr_scheduler.MultiStepLR(hyperparameter_optimizer, milestones, gamma=gamma)
+        variational_scheduler = torch.optim.lr_scheduler.MultiStepLR(variational_optimizer, milestones, gamma=gamma)
     elif lr_sched is None:
         lr_sched = lambda epoch: 1.0
         hyperparameter_scheduler = torch.optim.lr_scheduler.LambdaLR(hyperparameter_optimizer, lr_lambda=lr_sched)
@@ -114,8 +114,10 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
     # Our loss object. We're using the VariationalELBO
     if mll_type=="ELBO":
+        print("Using ELBO")
         mll = gpytorch.mlls.VariationalELBO(likelihood, model, num_data=n_samples)
     elif mll_type=="PLL": 
+        print("Using PLL")
         mll = gpytorch.mlls.PredictiveLogLikelihood(likelihood, model, num_data=n_samples)
     
     if "tqdm" in args and args["tqdm"]:
@@ -139,8 +141,10 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
             variational_optimizer.zero_grad()
             hyperparameter_optimizer.zero_grad()
-            #output = model(x_batch)
-            output = likelihood(model(x_batch))
+            if mll_type=="ELBO":
+                output = model(x_batch)
+            elif mll_type=="PLL": 
+                output = likelihood(model(x_batch))
             loss = -mll(output, y_batch)
             if watch_model:
                 wandb.log({"loss": loss.item()})

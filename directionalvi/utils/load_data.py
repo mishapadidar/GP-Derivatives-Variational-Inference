@@ -69,14 +69,12 @@ def load_helens(data_src_path, **args):
         dy = dy / SCALE_Y_FACTOR #modify derivatives due to y-scaling
         dy[:, 0] = dy[:, 0]*SCALE_0_FACTOR #modify derivatives due to x-scaling
         dy[:, 1] = dy[:, 1]*SCALE_1_FACTOR
-        data = torch.cat((y, dy), dim = 1).float()
+        Y = torch.cat((y, dy), dim = 1).float()
     else:
-        data = y
-    
+        Y = y
     # FILTERING DATA
     # location concatenated with y and dy values, for the sake of filtering
-    full_data = torch.cat((x, data), dim=1).float() 
-    
+    full_data = torch.cat((x, Y), dim=1).float() 
     temp_full_data = np.array(full_data)
     def fun(x, val = filter_val):
         if x[0]>val or x[1]>val:       
@@ -84,31 +82,36 @@ def load_helens(data_src_path, **args):
         else:
             return True
     filtered = filter(fun, temp_full_data)
-    #for item in filtered:
-    #    print(item)
     arr = [item for item in filtered]
-    len_arr = len(arr) #number of total points after filtering
-    # len_arr = len_arr - len_arr%100
+    len_arr = len(arr) 
     arr = arr[:len_arr]
+    #recover X and Y from filtered concatenated values (arr)
+    X = torch.tensor([item[0:2] for item in arr])
+    Y = torch.tensor([item[2:] for item in arr]) 
+    Y = Y.squeeze(-1)   
+    # shuffle the data
+    indices = torch.randperm(X.size(0))[:X.size(0)]
+    X = X[indices]
+    Y = Y[indices]
+    dim = X.shape[-1]
+    train_x = X[:n, :].contiguous()
+    train_y = Y[:n].contiguous()
+    test_x = X[n:, :].contiguous()
+    test_y = Y[n:].contiguous()
 
-    #recover x and data from filtered concatenated values (arr)
-    x = torch.tensor([item[0:2] for item in arr])
-    data = torch.tensor([item[2:] for item in arr]) 
-    data = data.squeeze(-1)   
-  
     if torch.cuda.is_available():
-        x, data = x.cuda(), data.cuda()
-    dataset = TensorDataset(x, data)
+        train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+
+    # dataset = TensorDataset(x, data)
     # Train-Test Split
-    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n, len_arr - n])#, generator=torch.Generator().manual_seed(42))
-    dim = len(train_dataset[0][0])
+    # train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n, len_arr - n])#, generator=torch.Generator().manual_seed(42))
+    # dim = len(train_dataset[0][0])
     info_dict = {"SCALE_x0_FACTOR": SCALE_0_FACTOR.item(),
                  "SCALE_x1_FACTOR": SCALE_1_FACTOR.item(),
                  "SCALE_Y_FACTOR": SCALE_Y_FACTOR[0].item(),
                  "n_train":n,
                  "n_test": len_arr - n}
-    print(info_dict)
-    return train_dataset, test_dataset, dim, info_dict
+    return train_x, train_y, test_x, test_y, dim, info_dict
 
 
 def load_3droad(data_src_path, **args):
@@ -143,4 +146,4 @@ def load_3droad(data_src_path, **args):
     info_dict = {"n_train":train_n,
                  "n_test": len(X) - train_n}
 
-    return train_dataset, test_dataset, dim, info_dict
+    return train_x, train_y, test_x, test_y, dim, info_dict

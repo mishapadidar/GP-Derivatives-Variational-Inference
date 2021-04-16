@@ -21,7 +21,8 @@ def compute_optimal_subspace_projection(G,X,k):
   G =  G @ (VT.T)[:,:k]
   # project X as well
   X = X @ (VT.T[:,:k])
-  return G,X
+  print("Singular values", S)
+  return G,X, (VT.T[:,:k])
 
 if __name__ == "__main__":
   import pickle

@@ -21,12 +21,14 @@ import traditional_vi
 from load_data import *
 from metrics import *
 from synthetic_functions import *
+from synthetic1.compute_optimal_subspace import *
 try: # import wandb if watch model on weights&biases
   import wandb
 except:
   pass
 
 def main(**args):
+    torch.set_default_dtype(torch.float64)
     torch.random.manual_seed(args["seed"])
     dataset_type = args["dataset"].split('-')[0]
     dataset_name = args["dataset"].split('-')[1]
@@ -54,12 +56,9 @@ def main(**args):
     if args["model"]=="SVGP":
         args["derivative"]=False
         expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
-    elif args["model"]=="DSVGP":
+    elif args["model"]=="DSVGP" or args["model"]=="GradSVGP":
         args["derivative"]=True
         expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
-    elif args["model"]=="GradSVGP":
-        args["derivative"]=True
-        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
@@ -88,14 +87,12 @@ def main(**args):
         #obtain train and test TensorDatasets
         if torch.cuda.is_available():
             train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
-        train_dataset = TensorDataset(train_x,train_y)
-        test_dataset = TensorDataset(test_x,test_y)
     else: #load real dataset
         #obtain train and test TensorDatasets
         data_loader = eval(f"load_{dataset_name}")
         data_src_path = f"../data/{dataset_name}"
         args["filter_val"] = 1.0
-        train_dataset, test_dataset, dim, info_dict = data_loader(data_src_path, **args)
+        train_x, train_y, test_x, test_y, dim, info_dictt = data_loader(data_src_path, **args)
         n = info_dict["n_train"]
         n_test = info_dict["n_test"]
         
@@ -103,17 +100,27 @@ def main(**args):
     assert num_directions <= dim
     assert minibatch_size <= n
 
+    # active subspace for GradSVGP
+    if args["model"]=="GradSVGP" and num_directions < dim:
+        G_train, train_x, P = compute_optimal_subspace_projection((train_y[:, 1:]).cpu().numpy(),train_x.cpu().numpy(),num_directions)
+        P = torch.tensor(P, dtype=train_y.dtype)
+        G_train = torch.tensor(G_train, dtype=train_y.dtype)
+        train_x = torch.tensor(train_x, dtype=test_x.dtype)
+        if torch.cuda.is_available():
+            P, G_train,train_x = P.cuda(), G_train.cuda(), train_x.cuda(), 
+        train_y = torch.cat([train_y[:,0:1],G_train], 1)
+        test_x = test_x@P
+        G_test = test_y[:,1:]@P
+        test_y =  torch.cat([test_y[:,0:1], G_test], 1)
+
+    train_dataset = TensorDataset(train_x,train_y)
+    test_dataset = TensorDataset(test_x,test_y)
+
     # train
-    if args["model"]=="SVGP" or args["model"]=="GradSVGP":
-        print(f"\n---{args['model']}---")
-        print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
-        print(f"Start training with {n} trainig data of dim {dim}")
-        print(f"VI setups: {num_inducing} inducing points")
-    elif args["model"]=="DSVGP":
-        print(f"\n---{args['model']}---")
-        print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
-        print(f"Start training with {n} trainig data of dim {dim}")
-        print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+    print(f"\n---{args['model']}---")
+    print(f"Variational distribution: {variational_dist}, Variational strategy: {variational_strat}")
+    print(f"Start training with {n} trainig data of dim {dim}")
+    print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
     if torch.cuda.is_available():
         start = torch.cuda.Event(enable_timing=True)
@@ -132,7 +139,7 @@ def main(**args):
                                                    learning_rate_ngd=learning_rate_ngd,
                                                    lr_sched=lr_sched,mll_type=mll_type,
                                                    num_contour_quadrature=num_contour_quadrature,
-                                                   watch_model=args["watch_model"])
+                                                   watch_model=args["watch_model"],gamma=args["gamma"])
     elif args["model"]=="DSVGP":
         model,likelihood = train_gp(train_dataset,
                                 num_inducing=num_inducing,
@@ -145,9 +152,9 @@ def main(**args):
                                 learning_rate_ngd = learning_rate_ngd,
                                 learning_rate_hypers = learning_rate_hypers,
                                 num_contour_quadrature = num_contour_quadrature,
-                                watch_model=args["watch_model"])
+                                watch_model=args["watch_model"],gamma=args["gamma"])
     elif args["model"]=="GradSVGP":
-        model,likelihood = grad_svgp.train_gp(train_dataset,dim,num_inducing=num_inducing,
+        model,likelihood = grad_svgp.train_gp(train_dataset,num_directions,num_inducing=num_inducing,
                                             minibatch_size=minibatch_size,
                                             num_epochs=num_epochs,
                                             use_ngd=use_ngd,use_ciq=use_ciq,
@@ -155,7 +162,7 @@ def main(**args):
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched, mll_type=mll_type,
                                             num_contour_quadrature = num_contour_quadrature,
-                                            watch_model=args["watch_model"])
+                                            watch_model=args["watch_model"],gamma=args["gamma"])
 
     if torch.cuda.is_available():
         end.record()
@@ -172,15 +179,6 @@ def main(**args):
     if args["save_model"]:
         torch.save(model.state_dict(), f"../data/{expname_train}.model")
 
-    # collect the test function values
-    test_f = torch.zeros(n_test)
-    for ii in range(n_test):
-        if args["model"] == "DSVGP":
-            test_f[ii] = test_dataset[ii][1][0] # function value
-        elif args["model"] == "SVGP":
-            test_f[ii] = test_dataset[ii][1] # function value
-        elif args["model"] == "GradSVGP":
-            test_f[ii] = test_dataset[ii][1][0] # function value
 
     # test
     if args["model"]=="SVGP":
@@ -189,6 +187,7 @@ def main(**args):
                                                   minibatch_size=minibatch_size)
         pred_means = means
         pred_variance = variances
+        test_f = test_y
     elif args["model"]=="DSVGP":
         means, variances = eval_gp(test_dataset,model,likelihood,
                                     num_directions=num_directions,
@@ -196,12 +195,14 @@ def main(**args):
                                     minibatch_dim=num_directions)
         pred_means = means[::num_directions+1]
         pred_variance = variances[::num_directions+1]
+        test_f = test_y[:,0]
     elif args["model"]=="GradSVGP":
         means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
                                             num_inducing=num_inducing,
                                             minibatch_size=minibatch_size)
-        pred_means = means[::dim+1]
-        pred_variance = variances[::dim+1]
+        pred_means = means[::num_directions+1]
+        pred_variance = variances[::num_directions+1]
+        test_f = test_y[:,0]
     
     # metrics
     test_mse = MSE(test_f.cpu(),pred_means)
@@ -227,6 +228,15 @@ def main(**args):
         pickle.dump(summary,open(f"./postprocess/exp_res/{expname_test}.pkl","wb"))
 
 
+def str2bool(v):
+    if isinstance(v, bool):
+       return v
+    if v.lower() in ('yes', 'true', 't', 'y', '1'):
+        return True
+    elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+        return False
+    else:
+        raise argparse.ArgumentTypeError('Boolean value expected.')
 
 if __name__ == "__main__":
     
@@ -235,9 +245,9 @@ if __name__ == "__main__":
     # Directories for data/logs
     parser.add_argument("-ld", "--log-dir", type=str, default="./logs/")
     parser.add_argument("-dd", "--data-dir", type=str, default="./data/")
-    parser.add_argument("-sm", "--save_model", type=bool, default=False)
-    parser.add_argument("--watch_model", type=bool, default=False) 
-    parser.add_argument("--save_results", type=bool, default=False) #exp_script.py: error: argument --save_results: expected one argument
+    parser.add_argument("-sm", "--save_model", type=str2bool, nargs='?',const=True, default=False)
+    parser.add_argument("--watch_model", type=str2bool, nargs='?',const=True, default=False) 
+    parser.add_argument("--save_results", type=str2bool,nargs='?',const=True, default=False) #exp_script.py: error: argument --save_results: expected one argument
     parser.add_argument("--exp_name", type=str, default="-")
 
     # Dataset and model type
@@ -257,6 +267,7 @@ if __name__ == "__main__":
     parser.add_argument("-bs", "--batch_size", type=int, default=256)
     parser.add_argument("--lr", type=float, default=0.01)
     parser.add_argument("--lr_ngd", type=float, default=0.1)
+    parser.add_argument("--gamma", type=float, default=0.1)
     parser.add_argument("--num_contour_quad", type=int, default=15)
     parser.add_argument("--lr_sched", type=str, default=None)
     parser.add_argument("--mll_type", type=str, default="ELBO", choices=["ELBO", "PLL"])
