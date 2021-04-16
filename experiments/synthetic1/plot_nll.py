@@ -25,15 +25,16 @@ for ff in data_files:
   attrib['test_time']  = d['test_time']
   attrib['train_time'] = d['train_time']
   # add an indicator attribute for plotting
-  attrib['indic'] = d['mode'] + str(d['num_directions'])
+  attrib['run'] = d['mode'] + str(d['num_directions'])
   data.append(attrib)
 # make a pandas df
 df = pd.DataFrame.from_dict(data,orient='columns')
+#df = df[df['run']!='GradSVGP3']
 print(df)
 
 # plot
 sns.set()
-sns.lineplot(x='M',y='nll',hue='indic',style='indic',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=3,data=df)
+sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=3,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")
