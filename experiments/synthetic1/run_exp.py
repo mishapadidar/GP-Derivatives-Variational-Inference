@@ -9,8 +9,9 @@ write_sbatch =True
 submit       =True
 
 dd = 1
-ni_list = np.array([200,400,600,800,1000,1200,1400,1600]) # d=0
-ni_list = (ni_list/(dd+1)).astype(int)
+#M_list = np.array([200,400,600,800,1000,1200,1400,1600]) # matrix sizes
+M_list = np.array([200]) # matrix sizes
+ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
 
   # write a pickle file with the run info
