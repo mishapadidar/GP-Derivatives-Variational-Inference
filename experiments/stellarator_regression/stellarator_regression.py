@@ -14,11 +14,13 @@ sys.path.append("../../directionalvi/utils")
 sys.path.append("../../directionalvi")
 from directional_vi import train_gp, eval_gp
 import traditional_vi
+import grad_svgp
 from csv_dataset import csv_dataset
 from metrics import MSE
 import pickle
 
 #torch.set_default_dtype(torch.float64) 
+#gpytorch.settings.max_cg_iterations._set_value(2000)
 
 # load a pickle with the run params
 args = sys.argv
@@ -150,12 +152,48 @@ elif mode == "SVGP":
                                             minibatch_size=n_test)
   t3 = time.time()	
   test_time = t3 - t2
+
+elif mode == "GradSVGP":
+  # train
+  print("\n\n---Grad SVGP---")
+  print(f"Start training with {n} training data of dim {dim}")
+  print(f"VI setup: {num_inducing} inducing points, {num_directions} inducing directions")
+  t1 = time.time()	
+  model,likelihood = grad_svgp.train_gp(train_dataset,dim,
+                                            num_inducing=num_inducing,
+                                            minibatch_size=minibatch_size,
+                                            num_epochs=num_epochs,
+                                            use_ngd=use_ngd,
+                                            use_ciq=use_ciq,
+                                            learning_rate_hypers=learning_rate_hypers,
+                                            learning_rate_ngd=learning_rate_ngd,
+                                            lr_sched=lr_sched,
+                                            num_contour_quadrature=num_contour_quadrature,
+                                            mll_type=mll_type,
+                                            tqdm=False)
+  t2 = time.time()	
+  train_time = t2 - t1
+  
+  # save the model
+  torch.save(model.state_dict(),model_filename)
+  
+  # test
+  means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
+                                            num_inducing=num_inducing,
+                                            minibatch_size=n_test)
+  t3 = time.time()	
+  test_time = t3 - t2
+
+  # only keep the function values
+  means = means[::dim+1]
+  variances = variances[::dim+1]
+  
   
 
 # collect the test function values
 test_f = torch.zeros(n_test)
 for ii in range(n_test):
-  if mode == "DSVGP":
+  if mode == "DSVGP" or mode == "GradSVGP":
     test_f[ii] = test_dataset[ii][1][0] # function value
   elif mode == "SVGP":
     test_f[ii] = test_dataset[ii][1] # function value
