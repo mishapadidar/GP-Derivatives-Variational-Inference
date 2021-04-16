@@ -3,6 +3,7 @@ import pickle
 import numpy as np
 from scipy.io import loadmat
 from scipy.sparse import diags
+import sys
 
 # objective
 def svm_loss(Z,X,Y,gamma=1.0,deriv=True):
@@ -17,6 +18,8 @@ def svm_loss(Z,X,Y,gamma=1.0,deriv=True):
     fg = np.zeros(n)
 
   for ii in range(n):
+    print(f"Evaluation {ii}/{n}")
+    sys.stdout.flush()
     z = Z[ii]
     w = z[:-1]
     b = z[-1]
@@ -53,11 +56,10 @@ W = np.random.rand(n,w_dim)
 # compute the svm loss and gradients
 gamma = 0.1
 F = svm_loss(W,X,Y,gamma,deriv=True)
-# convert to torch
 
 # save the data
 d ={}
 d['X'] = torch.tensor(W)
-d['Y'] = torch.tensor(Y)
+d['Y'] = torch.tensor(F)
 name = f"./svm_dataset_{n}_points.pickle"
 pickle.dump(d,open(name,"wb"))

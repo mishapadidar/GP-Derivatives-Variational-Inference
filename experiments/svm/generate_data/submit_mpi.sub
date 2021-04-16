@@ -1,0 +1,13 @@
+#!/bin/bash
+#SBATCH -J svm_dataset               # Job name
+#SBATCH -o ./slurm_output/job_%j.out    # Name of stdout output file(%j expands to jobId)
+#SBATCH -e ./slurm_output/job_%j.err    # Name of stderr output file(%j expands to jobId)
+#SBATCH --nodes=1                                   # Total number of nodes requested
+#SBATCH --ntasks=1                                  # Total number of tasks to be configured for
+#SBATCH --tasks-per-node=1                          # Sets number of tasks to run on each node
+#SBATCH --cpus-per-task=1                           # Number of cpus needed by each task (if task is "make -j3" number should be 3)
+#SBATCH --get-user-env                              # Tells sbatch to retrieve the users login environment
+#SBATCH -t 168:00:00                                 # Time limit (hh:mm:ss)
+#SBATCH --mem-per-cpu=16G                         # Memory required per allocated CPU
+#SBATCH --partition=mpi-cpus                        # Which partition/queue it should run on
+python write_dataset.py
