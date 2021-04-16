@@ -9,7 +9,7 @@ write_sbatch =True
 submit       =True
 
 dd = 0
-M_list = np.array([200,400,600]) # matrix sizes
+M_list = np.array([200,500,800,1200]) # matrix sizes
 ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
 
@@ -34,7 +34,7 @@ for ni in ni_list:
   run_params['lr_gamma']                     = 0.1
   run_params['lr_sched']                     = None
   run_params['mll_type']                     = "PLL"
-  run_params['data_file'] = "./svm_dataset_1000_points.pickle"
+  run_params['data_file'] = "./svm_dataset_10000_points.pickle"
   # seed and date
   now     = datetime.now()
   seed    = int("%d%.2d%.2d%.2d%.2d"%(now.month,now.day,now.hour,now.minute,now.second))
