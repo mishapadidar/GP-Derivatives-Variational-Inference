@@ -21,11 +21,33 @@ import traditional_vi
 from load_data import *
 from metrics import *
 from synthetic_functions import *
-from synthetic1.compute_optimal_subspace import *
 try: # import wandb if watch model on weights&biases
   import wandb
 except:
   pass
+
+def compute_optimal_subspace_projection(G,X,k):
+  """Compute the optimal k-dimensional representation G
+  np array, 2d: G, rows are observations
+  int: k, dimension of subspace
+  return:
+    V: optimal directions
+    S: optimal weights (eigenvalues)
+    P: optimal weighted directions
+  """
+  # center the data
+  # G = G - np.mean(G,axis=0)
+  # compute the k largest eigens of G
+  # U,S,VT = np.linalg.svd(G)
+  
+  U,S,VT = np.linalg.svd(G/np.sqrt(G.shape[0]))
+  # truncated score matrix
+  #G =  U[:,:k] @ np.diag(S[:k])
+  G =  G @ (VT.T)[:,:k]
+  # project X as well
+  X = X @ (VT.T[:,:k])
+  print("Singular values", S[:10])
+  return G,X, (VT.T[:,:k])
 
 def main(**args):
     torch.set_default_dtype(torch.float64)
@@ -183,7 +205,7 @@ def main(**args):
     # test
     if args["model"]=="SVGP":
         means, variances = traditional_vi.eval_gp(test_dataset,model,likelihood, 
-                                                  num_inducing=num_inducing,
+                                                  num_inducing=num_inducing,mll_type=mll_type,
                                                   minibatch_size=minibatch_size)
         pred_means = means
         pred_variance = variances
@@ -192,13 +214,14 @@ def main(**args):
         means, variances = eval_gp(test_dataset,model,likelihood,
                                     num_directions=num_directions,
                                     minibatch_size=minibatch_size,
+                                    mll_type=mll_type,
                                     minibatch_dim=num_directions)
         pred_means = means[::num_directions+1]
         pred_variance = variances[::num_directions+1]
         test_f = test_y[:,0]
     elif args["model"]=="GradSVGP":
         means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
-                                            num_inducing=num_inducing,
+                                            num_inducing=num_inducing,mll_type=mll_type,
                                             minibatch_size=minibatch_size)
         pred_means = means[::num_directions+1]
         pred_variance = variances[::num_directions+1]
