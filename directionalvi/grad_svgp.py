@@ -179,7 +179,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
     sys.stdout.flush()
     return model, likelihood
 
-def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
+def eval_gp(test_dataset,model,likelihood, mll_type="ELBO", num_inducing=128,minibatch_size=1):
   
     dim = len(test_dataset[0][0])
     n_test = len(test_dataset)
@@ -195,7 +195,10 @@ def eval_gp(test_dataset,model,likelihood, num_inducing=128,minibatch_size=1):
             if torch.cuda.is_available():
                 x_batch = x_batch.cuda()
                 y_batch = y_batch.cuda()
-            preds = likelihood(model(x_batch))
+            if mll_type=="ELBO":
+                preds = model(x_batch)
+            elif mll_type=="PLL": 
+                preds = likelihood(model(x_batch))
             means = torch.cat([means, preds.mean.cpu()])
             variances = torch.cat([variances, preds.variance.cpu()])
     means = means[1:]

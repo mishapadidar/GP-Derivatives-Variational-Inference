@@ -275,7 +275,8 @@ def train_gp(train_dataset,num_inducing=128,
   return model,likelihood
 
 
-def eval_gp(test_dataset,model,likelihood,num_directions=1,minibatch_size=1,minibatch_dim =1):
+def eval_gp(test_dataset,model,likelihood,
+            mll_type="ELBO",num_directions=1,minibatch_size=1,minibatch_dim =1):
   
   assert num_directions == minibatch_dim
 
@@ -299,7 +300,10 @@ def eval_gp(test_dataset,model,likelihood,num_directions=1,minibatch_size=1,mini
       derivative_directions = derivative_directions.repeat(len(x_batch),1)
       kwargs['derivative_directions'] = derivative_directions
       # predict
-      preds = likelihood(model(x_batch,**kwargs))
+      if mll_type=="ELBO":
+        preds = model(x_batch,**kwargs)
+      elif mll_type=="PLL": 
+        preds = likelihood(model(x_batch,**kwargs))
       means = torch.cat([means, preds.mean.cpu()])
       variances = torch.cat([variances, preds.variance.cpu()])
 
