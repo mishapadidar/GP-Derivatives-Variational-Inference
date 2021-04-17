@@ -8,9 +8,8 @@ import numpy as np
 write_sbatch =True
 submit       =True
 
-dd = 1
-#M_list = np.array([200,400,600,800,1000,1200,1400,1600]) # matrix sizes
-M_list = np.array([200]) # matrix sizes
+dd = 0
+M_list = np.array([200,500,800,1200]) # matrix sizes
 ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
 
@@ -19,11 +18,11 @@ for ni in ni_list:
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['mode']                         = "DSVGP" # DSVGP, SVGP or GradSVGP
+  run_params['mode']                         = "SVGP" # DSVGP, SVGP or GradSVGP
   run_params['num_inducing']                 = ni
   run_params['num_directions']               = dd
   run_params['minibatch_size']               = 512
-  run_params['num_epochs']                   = 1200
+  run_params['num_epochs']                   = 600
   run_params['tqdm']                         = False
   run_params['inducing_data_initialization'] = False
   run_params['use_ngd']                      = False
@@ -31,12 +30,11 @@ for ni in ni_list:
   run_params['num_contour_quadrature']       = 10 # gpytorch default=15
   run_params['learning_rate_hypers']         = 0.01
   run_params['learning_rate_ngd']            = 0.1
-  run_params['lr_benchmarks']                = 20*np.array([800])
+  run_params['lr_benchmarks']                = 20*np.array([400])
   run_params['lr_gamma']                     = 0.1
-  run_params['lr_sched']                     = "MultiStepLR"
+  run_params['lr_sched']                     = None
   run_params['mll_type']                     = "PLL"
-  run_params['data_file'] = "./synthetic1_dataset_10000_points_5_dim.pickle"
-  #run_params['data_file'] = f"./synthetic1_dataset_10000_points_5_dim_grad_dimredux_{run_params['num_directions']}_directions.pickle"
+  run_params['data_file'] = "./svm_dataset_10000_points.pickle"
   # seed and date
   now     = datetime.now()
   seed    = int("%d%.2d%.2d%.2d%.2d"%(now.month,now.day,now.hour,now.minute,now.second))
@@ -45,14 +43,14 @@ for ni in ni_list:
   run_params['seed']  = seed
   # file name
   if run_params['mode'] == "DSVGP":
-    base_name = f"synthetic1_DSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
+    base_name = f"svm_DSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
               f"_ne_{run_params['num_epochs']}_ngd_{run_params['use_ngd']}"+\
               f"_ciq_{run_params['use_ciq']}_{barcode}"
   elif run_params['mode'] == "SVGP":
-    base_name = f"synthetic1_SVGP_ni_{run_params['num_inducing']}"+\
+    base_name = f"svm_SVGP_ni_{run_params['num_inducing']}"+\
               f"_ne_{run_params['num_epochs']}_{barcode}"
   elif run_params['mode'] == "GradSVGP":
-    base_name = f"synthetic1_GradSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
+    base_name = f"svm_GradSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
               f"_ne_{run_params['num_epochs']}_{barcode}"
   run_params['base_name']  = base_name
   param_filename = run_params_dir + "params_" +base_name + ".pickle"
@@ -78,7 +76,7 @@ for ni in ni_list:
     f.write(f"#SBATCH -t 168:00:00\n")
     f.write(f"#SBATCH --partition=default_gpu\n")
     f.write(f"#SBATCH --gres=gpu:1\n")
-    f.write(f"python3 synthetic1.py {param_filename}\n")
+    f.write(f"python3 train_and_eval.py {param_filename}\n")
     print(f"Dumped slurm file: {slurm_name}")
     
     # write the shell submission script

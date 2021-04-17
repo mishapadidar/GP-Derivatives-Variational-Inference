@@ -31,7 +31,7 @@ print(df)
 
 # plot
 sns.set()
-sns.lineplot(x='M',y='nll',hue='nd',style='nd',markers=True,dashes=False,linewidth=3,data=df)
+sns.lineplot(x='M',y='nll',hue='nd',style='nd',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=3,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")

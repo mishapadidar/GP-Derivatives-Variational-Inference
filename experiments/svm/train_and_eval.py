@@ -19,8 +19,6 @@ from csv_dataset import csv_dataset
 from metrics import MSE
 import pickle
 
-#torch.set_default_dtype(torch.float64) 
-#gpytorch.settings.max_cg_iterations._set_value(2000)
 
 # load a pickle with the run params
 args = sys.argv
@@ -53,33 +51,52 @@ if lr_sched is None:
 elif lr_sched == "MultiStepLR":
   def lr_sched(epoch):
     a = np.sum(lr_benchmarks < epoch)
-    # lr_gamma should be in (0,1)
+    # lr_gamma should be > 1
     return (lr_gamma)**a
 elif lr_sched == "LambdaLR":
-  lr_sched = lambda epoch: 1./(1+lr_gamma*np.sqrt(epoch))
+  lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
 
 # set the seed
 torch.random.manual_seed(seed)
 
 # output file names
 data_dir = "./output/"
-model_filename = data_dir + "model_" + base_name + ".model"
+model_filename = data_dir + "model_"+ base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
 
-# load a dataset
-if mode == "SVGP": gradients = False
-else: gradients = True
-dataset = csv_dataset(data_file,rescale=True,gradients=gradients)
-dim = len(dataset[0][0])
-n   = len(dataset)
+if mode == "DSVGP" or mode == "GradSVGP": deriv=True
+elif mode == "SVGP": deriv = False
+
+# load the data
+d = pickle.load(open(data_file, "rb"))
+X = d['X'].float()
+Y = d['Y'].float()
+n,dim = X.shape
+# standardize f(x) and gradients.
+mu  = torch.mean(Y[:,0])
+Y[:,0] = Y[:,0] - mu
+Y = Y/torch.std(Y[:,0])
+
+if deriv == False:
+  Y = Y[:,0]
+
+
+# make a torch dataset
+dataset = TensorDataset(X,Y)
 
 # train-test split
 n_train = int(0.8*n)
 n_test  = int(0.2*n)
-
 train_dataset,test_dataset = torch.utils.data.random_split(dataset,[n_train,n_test])
+
+#if torch.cuda.is_available():
+#    train_dataset, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+
+# make dataloaders
+train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+test_loader   = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
 
 if mode == "DSVGP":
@@ -137,8 +154,8 @@ elif mode == "SVGP":
                                             learning_rate_hypers=learning_rate_hypers,
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched,
-                                            mll_type=mll_type,
                                             num_contour_quadrature=num_contour_quadrature,
+                                            mll_type=mll_type,
                                             tqdm=False)
   t2 = time.time()	
   train_time = t2 - t1
@@ -188,7 +205,6 @@ elif mode == "GradSVGP":
   means = means[::dim+1]
   variances = variances[::dim+1]
   
-  
 
 # collect the test function values
 test_f = torch.zeros(n_test)
@@ -214,3 +230,4 @@ outdata['test_time']  = test_time
 # add the run params
 outdata.update(run_params)
 pickle.dump(outdata,open(data_filename,"wb"))
+print(f"Dropped file: {data_filename}")
