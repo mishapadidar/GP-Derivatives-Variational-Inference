@@ -24,14 +24,29 @@ for ff in data_files:
   attrib['mse'] = d['test_mse'].item()
   attrib['test_time']  = d['test_time']
   attrib['train_time'] = d['train_time']
+  if d['mode'] == 'SVGP' and d['mll_type'] == 'PLL':
+    d['mode'] = "PPGPR"
+  elif d['mode'] == 'DSVGP' and d['mll_type'] == 'PLL':
+    d['mode'] = "DPPGPR"
+  attrib['run'] = d['mode'] + str(d['num_directions'])
   data.append(attrib)
 # make a pandas df
 df = pd.DataFrame.from_dict(data,orient='columns')
+#df = df[df['M'] > 400]
 print(df)
 
 # plot
-sns.set()
-sns.lineplot(x='M',y='nll',hue='nd',style='nd',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=3,data=df)
+rc = {'figure.figsize':(10,5),
+      'axes.facecolor':'white',
+      'axes.grid' : True,
+      'grid.color': '.8',
+      'font.family':'Times New Roman',
+      'font.size' : 15}
+plt.rcParams.update(rc)
+#sns.set()
+#sns.set_style("whitegrid")
+#sns.set_context("paper", font_scale=2.0)
+sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")
