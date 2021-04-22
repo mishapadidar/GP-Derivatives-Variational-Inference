@@ -2,7 +2,6 @@ from gpytorch.models import ApproximateGP
 from gpytorch.variational import CholeskyVariationalDistribution
 from gpytorch.variational import VariationalStrategy
 from torch.utils.data import TensorDataset, DataLoader
-import tqdm
 import math
 import time
 import torch
@@ -48,9 +47,9 @@ def train_gp(train_dataset,dim,num_inducing=128,
             mll_type="ELBO",
             num_contour_quadrature=15,
             watch_model=False,gamma=0.1,
+            verbose=True,
             **args):
     
-    print_loss=True
     train_loader = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
     n_samples = len(train_dataset)
 
@@ -120,20 +119,11 @@ def train_gp(train_dataset,dim,num_inducing=128,
         print("Using PLL")
         mll = gpytorch.mlls.PredictiveLogLikelihood(likelihood, model, num_data=n_samples)
     
-    if "tqdm" in args and args["tqdm"]:
-        print_loss=False # don't print loss every 100 epoch if use tqdm
-        epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
-    else:
-        epochs_iter = range(num_epochs)
-    
+    epochs_iter = range(num_epochs)
     total_step=0
     for i in epochs_iter:
-        if "tqdm" in args and args["tqdm"]:
-            minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
-        else:
-            minibatch_iter = train_loader
+        minibatch_iter = train_loader
 
-        mini_steps = 0
         for x_batch, y_batch in minibatch_iter:
             if torch.cuda.is_available():
                 x_batch = x_batch.cuda()
@@ -152,25 +142,20 @@ def train_gp(train_dataset,dim,num_inducing=128,
             hyperparameter_optimizer.step()
             hyperparameter_scheduler.step()
 
-            if "tqdm" in args and args["tqdm"]:
-                epochs_iter.set_postfix(loss=loss.item())           
-            
-            if total_step % 50 == 0 and print_loss:
+            if total_step % 50 == 0 and verbose:
                 means = output.mean
                 stds  = output.variance.sqrt()
                 nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch).mean()
-                print(f"Epoch: {i}; total_step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
+                print(f"Epoch: {i}; total_step: {total_step}, loss: {loss.item()}, nll: {nll}")
 
-            mini_steps +=1
             total_step +=1
             sys.stdout.flush()
         
     
      
-    if print_loss:
+    if verbose:
         print(f"Done! loss: {loss.item()}")
-
-    print("\nDone Training!")
+        print("\nDone Training!")
     sys.stdout.flush()
     return model, likelihood
 
