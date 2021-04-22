@@ -90,7 +90,7 @@ class StyblinskiTang_with_deriv(StyblinskiTang):
         ub = np.array([item[1] for item in self._bounds])
         return lb, ub
 
-class Hart_with_deriv(Hartmann):
+class Hartmann_with_deriv(Hartmann):
     r"""Hartmann synthetic test function.
 
         Most commonly used is the six-dimensional version (typically evaluated on [0, 1]^6):
@@ -107,27 +107,19 @@ class Hart_with_deriv(Hartmann):
         d = X.shape[-1]
         w = X.shape[0]
         assert(d==6)
-        
-        #precompute inner summands of H(x)
+        #precompute inner summands of H(x): ALPHA_i exp( - sum_{j=1}^6 A_ij (x_j - P_ij)**2 
         exprs = torch.zeros(w, 1)
         for i in range(4):
             cur_expr = torch.zeros(w, 1)
             for j in range(6):
-                #print(X[..., j])
                 v = X[..., j].reshape(w, 1)
-                #print("v: ", v)
                 cur_expr = cur_expr + A[i, j]*(v - P[i, j])**2
-            #print(cur_expr)
             cur_expr = ALPHA[i]*np.exp(-cur_expr)
-            #print(cur_expr)
-            #print(exprs)
             exprs = torch.cat([exprs, cur_expr], 1)
         exprs = exprs[:, 1:]
-        #print("exprs: ", exprs)
 
         val = super().evaluate_true(X)
         val = val.unsqueeze(-1) #make last dimension 1
-        #print("val shape: ", val.shape)
         
         #evaluate derivative
         for j in range(d):
@@ -135,9 +127,7 @@ class Hart_with_deriv(Hartmann):
             for i in range(4):
                 v = X[..., j].reshape(w, 1)
                 ith = exprs[:, i].reshape(w, 1)
-                #print("ith shape: ", ith.shape)
-                cur_grad = cur_grad + ALPHA[i] * ith * (-2*A[i, j]*(v-P[i, j]))
-                #print("cur_grad shape: ", cur_grad.shape)
+                cur_grad = cur_grad + ith * (-2*A[i, j]*(v-P[i, j]))
             val = torch.cat([val, -cur_grad], 1)
         return val
     
