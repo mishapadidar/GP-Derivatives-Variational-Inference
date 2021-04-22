@@ -100,17 +100,46 @@ class Hart_with_deriv(Hartmann):
     def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
         ALPHA = self.ALPHA
         A = self.A 
-        P = self.P
-        
+        P = 1e-4 * self.P
+        #print("P: ", P)
+        #print("A: ", A)
+        #print("ALPHA: ", ALPHA)
         d = X.shape[-1]
-        #print("d is: ", d)
+        w = X.shape[0]
+        assert(d==6)
+        
+        #precompute inner summands of H(x)
+        exprs = torch.zeros(w, 1)
+        for i in range(4):
+            cur_expr = torch.zeros(w, 1)
+            for j in range(6):
+                #print(X[..., j])
+                v = X[..., j].reshape(w, 1)
+                #print("v: ", v)
+                cur_expr = cur_expr + A[i, j]*(v - P[i, j])**2
+            #print(cur_expr)
+            cur_expr = ALPHA[i]*np.exp(-cur_expr)
+            #print(cur_expr)
+            #print(exprs)
+            exprs = torch.cat([exprs, cur_expr], 1)
+        exprs = exprs[:, 1:]
+        #print("exprs: ", exprs)
+
         val = super().evaluate_true(X)
         val = val.unsqueeze(-1) #make last dimension 1
-
+        #print("val shape: ", val.shape)
+        
+        #evaluate derivative
         for j in range(d):
+            cur_grad = torch.zeros(w, 1)
             for i in range(4):
-                cur_grad = ALPHA[i] * math.exp(-1)
-        pass
+                v = X[..., j].reshape(w, 1)
+                ith = exprs[:, i].reshape(w, 1)
+                #print("ith shape: ", ith.shape)
+                cur_grad = cur_grad + ALPHA[i] * ith * (-2*A[i, j]*(v-P[i, j]))
+                #print("cur_grad shape: ", cur_grad.shape)
+            val = torch.cat([val, -cur_grad], 1)
+        return val
     
 
     def get_bounds(self):
