@@ -121,16 +121,22 @@ else:
 
 if mode == "DSVGP":
   # train
-  print("\n\n---DirectionalGradVGP---")
-  print(f"Start training with {n} trainig data of dim {dim}")
+  print("\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
-  t1 = time.time()	
-  model,likelihood = directional_vi.train_gp(train_dataset,
+
+  from turbo1_grad import *
+  def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
+    # expects train_x on unit cube and train_y standardized
+    # make a trainable model for TuRBO
+    train_x = train_x.float()
+    train_y = train_y.float()
+    dataset = TensorDataset(train_x,train_y)
+    model,likelihood = directional_vi.train_gp(dataset,
                         num_inducing=num_inducing,
                         num_directions=num_directions,
                         minibatch_size = minibatch_size,
                         minibatch_dim = num_directions,
-                        num_epochs =num_epochs, 
+                        num_epochs =num_steps, 
                         learning_rate_hypers=learning_rate_hypers,
                         learning_rate_ngd=learning_rate_ngd,
                         inducing_data_initialization=inducing_data_initialization,
@@ -139,25 +145,53 @@ if mode == "DSVGP":
                         lr_sched=lr_sched,
                         mll_type=mll_type,
                         num_contour_quadrature=num_contour_quadrature,
-                        tqdm=tqdm,
+                        verbose=verbose,
                         )
-  t2 = time.time()	
-  train_time = t2 - t1
-  
-  # save the model
-  torch.save(model.state_dict(),model_filename)
-  
-  # test
-  means, variances = directional_vi.eval_gp(test_dataset,model,likelihood,
-                              num_directions=num_directions,
-                              minibatch_size=minibatch_size,
-                              minibatch_dim=num_directions)
-  t3 = time.time()	
-  test_time = t3 - t2
+    return model.double(),likelihood.double()
 
-  # only keep the function values
-  means = means[::num_directions+1]
-  variances = variances[::num_directions+1]
+  def sample_from_gp(model,likelihood,X_cand,n_samples):
+    """
+    X_cand: 2d torch tensor, points to sample at
+    n_samples: int, number of samples to take per point in X_cand
+    """
+    model.eval()
+    likelihood.eval()
+
+    # ensure correct type
+    model = model.float()
+    likelihood = likelihood.float()
+    X_cand = X_cand.float()
+    
+    n,dim = X_cand.shape
+    kwargs = {}
+    derivative_directions = torch.eye(dim)[:model.num_directions]
+    derivative_directions = derivative_directions.repeat(n,1)
+    kwargs['derivative_directions'] = derivative_directions.to(X_cand.device).float()
+    y_cand = likelihood(model(X_cand,**kwargs)).sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
+    y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
+
+    return y_cand
+
+  
+  # initialize TuRBO
+  problem = Turbo1Grad(
+        myObj,
+        lb=turbo_lb,ub=turbo_ub,
+        n_init=turbo_n_init,
+        max_evals=turbo_max_evals,
+        train_gp=train_gp_for_turbo,
+        sample_from_gp=sample_from_gp,
+        batch_size=turbo_batch_size,
+        verbose=True,
+        use_ard=True,
+        max_cholesky_size=2000,
+        n_training_steps=num_epochs,
+        min_cuda=1024,
+        device=turbo_device,
+        dtype="float64")
+  # optimize
+  problem.optimize()
+  X_turbo, fX_turbo = problem.X, problem.fX[:,0] # Evaluated points
 
 elif mode == "SVGP":
   # train
