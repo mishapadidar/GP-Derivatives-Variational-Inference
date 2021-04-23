@@ -167,7 +167,8 @@ if mode == "DSVGP":
     derivative_directions = torch.eye(dim)[:model.num_directions]
     derivative_directions = derivative_directions.repeat(n,1)
     kwargs['derivative_directions'] = derivative_directions.to(X_cand.device).float()
-    y_cand = likelihood(model(X_cand,**kwargs)).sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
+    preds  = likelihood(model(X_cand,**kwargs))
+    y_cand = preds.sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
     y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
 
     return y_cand
@@ -186,7 +187,7 @@ if mode == "DSVGP":
         use_ard=True,
         max_cholesky_size=2000,
         n_training_steps=num_epochs,
-        min_cuda=1024,
+        min_cuda=0, # directional_vi.py always runs on cuda if available
         device=turbo_device,
         dtype="float64")
   # optimize

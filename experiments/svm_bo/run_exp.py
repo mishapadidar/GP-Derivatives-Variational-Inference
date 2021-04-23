@@ -6,10 +6,10 @@ import numpy as np
 
 # flags
 write_sbatch =True
-submit       =False
+submit       =True
 
-dd = 0
-M_list = np.array([200]) # matrix sizes
+dd = 1
+M_list = np.array([200,500,800]) # matrix sizes
 ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
 
@@ -18,11 +18,11 @@ for ni in ni_list:
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['mode']                         = "SVGP" # DSVGP, SVGP or GradSVGP
+  run_params['mode']                         = "DSVGP" # DSVGP, SVGP or GradSVGP
   run_params['num_inducing']                 = ni
   run_params['num_directions']               = dd
   run_params['minibatch_size']               = 512
-  run_params['num_epochs']                   = 30
+  run_params['num_epochs']                   = 100
   run_params['tqdm']                         = False
   run_params['inducing_data_initialization'] = False
   run_params['use_ngd']                      = False
@@ -34,12 +34,12 @@ for ni in ni_list:
   run_params['lr_gamma']                     = 0.1
   run_params['lr_sched']                     = None
   run_params['mll_type']                     = "PLL"
-  run_params['verbose']                      = True
+  run_params['verbose']                      = False
   run_params['turbo_lb']                     = np.zeros(783) #dim = 783
   run_params['turbo_ub']                     = np.ones(783)
-  run_params['turbo_n_init']                 = 10
-  run_params['turbo_max_evals']              = 20
-  run_params['turbo_batch_size']             = 10
+  run_params['turbo_n_init']                 = 100
+  run_params['turbo_max_evals']              = 10000
+  run_params['turbo_batch_size']             = 50
   run_params['gamma_mnist']                  = 0.01
   # seed and date
   now     = datetime.now()
