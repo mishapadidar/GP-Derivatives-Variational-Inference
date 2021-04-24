@@ -226,7 +226,7 @@ elif mode == "SVGP":
         use_ard=True,
         max_cholesky_size=2000,
         n_training_steps=num_epochs,
-        min_cuda=1024,
+        min_cuda=0,
         device=turbo_device,
         dtype="float64")
   # optimize
