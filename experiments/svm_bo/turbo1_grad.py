@@ -107,7 +107,7 @@ class Turbo1Grad:
         self.lengthscales = np.zeros((0, self.dim)) if self.use_ard else np.zeros((0, 1))
 
         # Tolerances and counters
-        self.n_cand = min(100 * self.dim, 500)
+        self.n_cand = min(100 * self.dim, 5000)
         self.failtol = np.ceil(np.max([4.0 / batch_size, self.dim / batch_size]))
         self.succtol = 3
         self.n_evals = 0
