@@ -140,7 +140,7 @@ class Turbo1Grad:
         self.length = self.length_init
 
     def _adjust_length(self, fX_next):
-        if np.min(fX_next) < np.min(self._fX) - 1e-3 * math.fabs(np.min(self._fX)):
+        if np.min(fX_next) < np.min(self._fX[:,0]) - 1e-3 * math.fabs(np.min(self._fX[:,0])):
             self.succcount += 1
             self.failcount = 0
         else:
@@ -161,8 +161,12 @@ class Turbo1Grad:
         assert X.min() >= 0.0 and X.max() <= 1.0
 
         # Standardize function values.
-        mu, sigma = np.median(fX, axis=0), fX.std(axis=0)
-        fX = (deepcopy(fX) - mu) / sigma
+        mu, sigma = np.median(fX, axis=0)[0], fX.std(axis=0)[0]
+        fX[:,0] = (deepcopy(fX[:,0]) - mu) / sigma
+        # Standardize gradients
+        fX[:,1:] = deepcopy(fX[:,1:]) / sigma
+        # do from_unit_cube mapping on gradients (b/c X got mapped to unit cube)
+        fX[:,1:] = deepcopy(fX[:,1:]) * (self.ub-self.lb)
 
         # Figure out what device we are running on
         if len(X) < self.min_cuda:
@@ -231,7 +235,7 @@ class Turbo1Grad:
         del X_torch, y_torch, X_cand_torch, gp
 
         # De-standardize the sampled function values
-        y_cand = mu[0] + sigma[0] * y_cand
+        y_cand = mu + sigma * y_cand
 
         return X_cand, y_cand, hypers
 
@@ -304,8 +308,8 @@ class Turbo1Grad:
                 # Evaluate batch
                 fX_next = np.vstack([self.f(x) for x in X_next])
 
-                # Update trust region
-                self._adjust_length(fX_next)
+                # Update trust region (based only on function values)
+                self._adjust_length(fX_next[:,0])
 
                 # Update budget and append data
                 self.n_evals += self.batch_size
