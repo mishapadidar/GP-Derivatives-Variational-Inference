@@ -2,7 +2,6 @@ import math
 import numpy as np
 import torch
 import gpytorch
-import tqdm
 import random
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
@@ -95,6 +94,7 @@ def train_gp(train_dataset,num_inducing=128,
   mll_type="ELBO",
   num_contour_quadrature=15,
   watch_model=False,gamma=0.1,
+  verbose=True,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -207,22 +207,13 @@ def train_gp(train_dataset,num_inducing=128,
     mll = gpytorch.mlls.PredictiveLogLikelihood(likelihood, model, num_data=num_data)
 
   # train
-  print_loss=True # if print loss every 100 steps
-  if "tqdm" in args and args["tqdm"]:
-    epochs_iter = tqdm.tqdm(range(num_epochs), desc="Epoch")
-  else:
-    epochs_iter = range(num_epochs)
+  epochs_iter = range(num_epochs)
 
   total_step=0
   for i in epochs_iter:
     # iterator for minibatches
-    if "tqdm" in args and args["tqdm"]:
-      print_loss=False # don't print loss every 100 steps if use tqdm
-      minibatch_iter = tqdm.tqdm(train_loader, desc="Minibatch", leave=False)
-    else:
-      minibatch_iter = train_loader
+    minibatch_iter = train_loader
     # loop through minibatches
-    mini_steps = 0
     for x_batch, y_batch in minibatch_iter:
       if torch.cuda.is_available():
         x_batch = x_batch.cuda()
@@ -239,39 +230,29 @@ def train_gp(train_dataset,num_inducing=128,
 
       variational_optimizer.zero_grad()
       hyperparameter_optimizer.zero_grad()
-      if mll_type=="ELBO":
-        output = model(x_batch,**kwargs)
-      elif mll_type=="PLL": 
-        output = likelihood(model(x_batch,**kwargs))
+      output = likelihood(model(x_batch,**kwargs))
       loss = -mll(output, y_batch)
       if watch_model:
         wandb.log({"loss": loss.item()})
-      if "tqdm" in args and args["tqdm"]:
-        epochs_iter.set_postfix(loss=loss.item())     
       loss.backward()
       # step optimizers and learning rate schedulers
       variational_optimizer.step()
       variational_scheduler.step()
       hyperparameter_optimizer.step()
       hyperparameter_scheduler.step()
-      if total_step % 50 == 0 and print_loss:
+      if total_step % 50 == 0 and verbose:
           means = output.mean[::num_directions+1]
           stds  = output.variance.sqrt()[::num_directions+1]
           nll   = -torch.distributions.Normal(means, stds).log_prob(y_batch[::num_directions+1]).mean()
-          #print(f"Epoch: {i}; total_step: {mini_steps}, loss: {loss.item()}, nll: {nll}")
           print(f"Epoch: {i}; total_step: {total_step}, loss: {loss.item()}, nll: {nll}")
           sys.stdout.flush()
 
-      mini_steps +=1
       total_step +=1
-    # print the loss
-    # if i % 20 == 0 and print_loss:
-    #   print(f"Epoch: {i}; Step: {mini_steps}, loss: {loss.item()}")
      
-  if print_loss:
+  if verbose:
     print(f"Done! loss: {loss.item()}")
 
-  print("\nDone Training!")
+    print("\nDone Training!")
   return model,likelihood
 
 
@@ -300,10 +281,7 @@ def eval_gp(test_dataset,model,likelihood,
       derivative_directions = derivative_directions.repeat(len(x_batch),1)
       kwargs['derivative_directions'] = derivative_directions
       # predict
-      if mll_type=="ELBO":
-        preds = model(x_batch,**kwargs)
-      elif mll_type=="PLL": 
-        preds = likelihood(model(x_batch,**kwargs))
+      preds = likelihood(model(x_batch,**kwargs))
       means = torch.cat([means, preds.mean.cpu()])
       variances = torch.cat([variances, preds.variance.cpu()])
 

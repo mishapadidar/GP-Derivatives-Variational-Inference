@@ -116,9 +116,10 @@ class Hartmann_with_deriv(Hartmann):
             cur_expr = ALPHA[i]*np.exp(-cur_expr)
             exprs = torch.cat([exprs, cur_expr], 1)
         exprs = exprs[:, 1:]
+
         val = super().evaluate_true(X)
         val = val.reshape(*X.shape[:-1],1) #make last dimension 1
-        
+
         #evaluate derivative
         for j in range(d):
             cur_grad = torch.zeros(w, 1)
