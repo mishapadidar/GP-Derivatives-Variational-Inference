@@ -90,29 +90,45 @@ class StyblinskiTang_with_deriv(StyblinskiTang):
         ub = np.array([item[1] for item in self._bounds])
         return lb, ub
 
-class Hart_with_deriv(Hartmann):
+
+class Hartmann_with_deriv(Hartmann):
     r"""Hartmann synthetic test function.
-
         Most commonly used is the six-dimensional version (typically evaluated on [0, 1]^6):
-
         H(x) = - sum_{i=1}^4 ALPHA_i exp( - sum_{j=1}^6 A_ij (x_j - P_ij)**2 )
     """
     def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
         ALPHA = self.ALPHA
         A = self.A 
-        P = self.P
-        
+        P = 1e-4 * self.P
+        #print("P: ", P)
+        #print("A: ", A)
+        #print("ALPHA: ", ALPHA)
         d = X.shape[-1]
-        #print("d is: ", d)
+        w = X.shape[0]
+        assert(d==6)
+        #precompute inner summands of H(x): ALPHA_i exp( - sum_{j=1}^6 A_ij (x_j - P_ij)**2 
+        exprs = torch.zeros(w, 1)
+        for i in range(4):
+            cur_expr = torch.zeros(w, 1)
+            for j in range(6):
+                v = X[..., j].reshape(w, 1)
+                cur_expr = cur_expr + A[i, j]*(v - P[i, j])**2
+            cur_expr = ALPHA[i]*np.exp(-cur_expr)
+            exprs = torch.cat([exprs, cur_expr], 1)
+        exprs = exprs[:, 1:]
         val = super().evaluate_true(X)
-        val = val.unsqueeze(-1) #make last dimension 1
-
+        val = val.reshape(*X.shape[:-1],1) #make last dimension 1
+        
+        #evaluate derivative
         for j in range(d):
+            cur_grad = torch.zeros(w, 1)
             for i in range(4):
-                cur_grad = ALPHA[i] * math.exp(-1)
-        pass
+                v = X[..., j].reshape(w, 1)
+                ith = exprs[:, i].reshape(w, 1)
+                cur_grad = cur_grad + ith * (-2*A[i, j]*(v-P[i, j]))
+            val = torch.cat([val, -cur_grad], 1)
+        return val
     
-
     def get_bounds(self):
         lb = np.array([item[0] for item in self._bounds])
         ub = np.array([item[1] for item in self._bounds])
@@ -125,7 +141,7 @@ class Welch(SyntheticTestFunction):
     20-dimensional function (usually evaluated on `[-0.5, 0.5]^20`):
 
         f(x) = 5x_12/(1+x_1) + 5(x_4-x_20)^2 + x_5 + 40x_19^3 - ...
-                5x_1 + 0.05x_2 + 0.08x_3 - 0.03x_6 + 0.03x_7 - ...
+                5x_19 + 0.05x_2 + 0.08x_3 - 0.03x_6 + 0.03x_7 - ...
                 0.09x_9 - 0.01x_10 - 0.07x_11 + 0.25x_13^2 - ...
                 0.04x_14 + 0.06x_15 - 0.01x_17 - 0.03x_18
 
@@ -191,6 +207,100 @@ class Welch_with_deriv(Welch):
         grad_x17 =  torch.tensor(-0.01).repeat(*X.shape[:-1],1)
         grad_x18 =  torch.tensor(-0.03).repeat(*X.shape[:-1],1)
         grad_x19 =  (120*x19**2-5).reshape(*X.shape[:-1],1)
+        grad_x20 =  (-10*(x4 - x20)).reshape(*X.shape[:-1],1)
+        
+        return torch.cat([val, grad_x1, grad_x2,
+                         grad_x3, grad_x4, grad_x5,
+                         grad_x6, grad_x7, grad_x8,
+                         grad_x9, grad_x10, grad_x11,
+                         grad_x12, grad_x13, grad_x14, 
+                         grad_x15, grad_x16, grad_x17,
+                         grad_x18, grad_x19, grad_x20], 1)
+
+
+    def get_bounds(self):
+            lb = np.array([item[0] for item in self._bounds])
+            ub = np.array([item[1] for item in self._bounds])
+            return lb, ub
+
+class Welch2(SyntheticTestFunction):
+    r"""A modified Welch test function (Welch et al 1992). 
+
+    20-dimensional function (usually evaluated on `[-0.5, 0.5]^20`):
+
+        f(x) = 5x_12/(1+x_1) + 5(x_4-x_20)^2 + x_5 + 40x_19^3 - ...
+                5sin(x_19) + 5cos(x_2) + 8cos(x_3) - 3x_6**4 + 3(x_7**2+x_7) - ...
+                9x_9**3 - 10x_10**2 - 7exp(x_11) + 25x_13^2 - ...
+                4x_14**2 + 6x_15**2 - 10exp(x_17) - 3exp(x_18)
+
+    Reference: Einat Neumann Ben-Ari and David M Steinberg. Modeling data from computer experiments:an empirical comparison of kriging with MARS and projection pursuit regression. Quality Engineering, 19(4):327–338, 2007.
+    """
+    dim = 20
+    _bounds = [(-0.5, 0.5) for _ in range(dim)]
+    _optimal_value = 0.0
+    _optimizers = [(0., 0.)]
+    def evaluate_true(self, X: Tensor) -> Tensor:
+        term1 = 5*X[..., 11] / (1+X[..., 0])
+        term2 = 5 * (X[...,3]-X[..., 19])**2
+        term3 = X[..., 4] + 40*X[..., 18]**3 - 5*torch.sin(X[..., 18])
+        term4 = 5*torch.cos(X[..., 1]) + 8*torch.cos(X[..., 2]) - 3*(X[..., 5]**4)
+        term5 = 3*(X[..., 6]**2+X[..., 6]) - 9*(X[..., 8]**3) - 10*(X[..., 9]**2)
+        term6 = -7*torch.exp(X[..., 10]) + 25*(X[..., 12]**2) - 4*(X[..., 13]**2)
+        term7 = 6*(X[..., 14]**2) - 10*torch.exp(X[..., 16]) - 3*torch.exp(X[..., 17])
+        return term1+term2+term3+term4+term5+term6+term7
+
+
+class Welch2_with_deriv(Welch2):
+    
+    def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
+        d = X.shape[-1]   
+        n = X.shape[:-1]
+        x1 = X[..., 0]
+        x2 = X[..., 1]
+        x3 = X[..., 2]
+        x4 = X[..., 3]
+        x5 = X[..., 4]
+        x6 = X[..., 5]
+        x7 = X[..., 6]
+        x8 = X[..., 7]
+        x9 = X[..., 8]
+        x10 = X[..., 9]
+        x11 = X[..., 10]
+        x12 = X[..., 11]
+        x13 = X[..., 12]
+        x14 = X[..., 13]
+        x15 = X[..., 14]
+        x16 = X[..., 15]
+        x17 = X[..., 16]
+        x18 = X[..., 17]
+        x19 = X[..., 18]
+        x20 = X[..., 19]
+        val = super().evaluate_true(X)
+        val = val.reshape(*X.shape[:-1], 1)
+        # f(x) = 5x_12/(1+x_1) + 5(x_4-x_20)^2 + x_5 + 40x_19^3 - ...
+        #         5sin(x_19) + 5cos(x_2) + 8cos(x_3) - 3x_6**4 + 3(x_7**2+x_7) - ...
+        #         9x_9**3 - 10x_10**2 - 7exp(x_11) + 25x_13^2 - ...
+        #         4x_14**2 + 6x_15**2 - 10exp(x_17) - 3exp(x_18)
+
+        grad_x1 = (-5*x12/(1+x1)/(1+x1)).reshape(*X.shape[:-1],1)
+        grad_x2 = (-5*torch.sin(x2)).reshape(*X.shape[:-1],1)
+        grad_x3 = (-8*torch.sin(x3)).reshape(*X.shape[:-1],1)
+        grad_x4 =  (10*(x4-x20)).reshape(*X.shape[:-1],1)
+        grad_x5 =  torch.tensor(1.).repeat(*X.shape[:-1],1)
+        grad_x6 =  (-12*x6**3).reshape(*X.shape[:-1],1)
+        grad_x7 =  (3*(2*x7 + 1.0)).reshape(*X.shape[:-1],1)
+        grad_x8 =  torch.tensor(0).repeat(*X.shape[:-1],1)
+        grad_x9 =  (-27*x9**2).reshape(*X.shape[:-1],1)
+        grad_x10 =  (-20*x10).reshape(*X.shape[:-1],1)
+        grad_x11 =  (-7*torch.exp(x11)).reshape(*X.shape[:-1],1)
+        grad_x12 =  (5/(1+x1)).reshape(*X.shape[:-1],1)
+        grad_x13 =  (50*x13).reshape(*X.shape[:-1],1)
+        grad_x14 =  (-8*x14).reshape(*X.shape[:-1],1)
+        grad_x15 =  (12*x15).reshape(*X.shape[:-1],1)
+        grad_x16 =  torch.tensor(0.).repeat(*X.shape[:-1],1)
+        grad_x17 =  (-10*torch.exp(x17)).reshape(*X.shape[:-1],1)
+        grad_x18 =  (-3*torch.exp(x18)).reshape(*X.shape[:-1],1)
+        grad_x19 =  (120*x19**2-5*torch.cos(x19)).reshape(*X.shape[:-1],1)
         grad_x20 =  (-10*(x4 - x20)).reshape(*X.shape[:-1],1)
         
         return torch.cat([val, grad_x1, grad_x2,
