@@ -77,7 +77,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
     model.train()
     likelihood.train()
     
-    if "verbose" in args and args["verbose"]:
+    if verbose:
         param_total_dim = count_params(model,likelihood)
 
     # optimizers
