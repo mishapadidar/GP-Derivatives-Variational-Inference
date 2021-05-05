@@ -9,8 +9,8 @@ experiments/real_data_process/lenet/scratch
 experiments/real_data
 experiments/.ipynb_checkpoints
 experiments/wandb
-experiments/*.exp
 experiments/postprocess/
 *.ipynb
 experiments/*.sub
 experiments/*-copy.py
+experiments/*.exp*

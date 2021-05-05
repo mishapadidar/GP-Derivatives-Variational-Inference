@@ -112,3 +112,11 @@ err_deriv, _, _ = test_deriv(test_fun, 300)
 print(f"For {test_fun_name}, error in derivatives is {err_deriv:.4e}.")
 
 
+test_fun_name = "Welch2"
+test_fun = eval(f"{test_fun_name}_with_deriv")()
+err_fun = test_fun_val(test_fun, 10)
+print(f"\nFor {test_fun_name}, error in function values is {err_fun:.4e}.")
+# g stores the computed derivatives, g_fd stores values approximated by FD. 
+err_deriv, g, g_fd = test_deriv(test_fun, 300) 
+print(f"For {test_fun_name}, error in derivatives is {err_deriv:.4e}.")
+

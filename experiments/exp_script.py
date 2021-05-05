@@ -46,7 +46,7 @@ def compute_optimal_subspace_projection(G,X,k):
   G =  G @ (VT.T)[:,:k]
   # project X as well
   X = X @ (VT.T[:,:k])
-  print("Singular values", S[:10])
+  print("Singular values", S[:20])
   return G,X, (VT.T[:,:k])
 
 def main(**args):
@@ -161,7 +161,7 @@ def main(**args):
                                                    learning_rate_ngd=learning_rate_ngd,
                                                    lr_sched=lr_sched,mll_type=mll_type,
                                                    num_contour_quadrature=num_contour_quadrature,
-                                                   watch_model=args["watch_model"],gamma=args["gamma"])
+                                                   watch_model=args["watch_model"],gamma=args["gamma"], verbose=True)
     elif args["model"]=="DSVGP":
         model,likelihood = train_gp(train_dataset,
                                 num_inducing=num_inducing,
@@ -174,7 +174,7 @@ def main(**args):
                                 learning_rate_ngd = learning_rate_ngd,
                                 learning_rate_hypers = learning_rate_hypers,
                                 num_contour_quadrature = num_contour_quadrature,
-                                watch_model=args["watch_model"],gamma=args["gamma"])
+                                watch_model=args["watch_model"],gamma=args["gamma"], verbose=True)
     elif args["model"]=="GradSVGP":
         model,likelihood = grad_svgp.train_gp(train_dataset,num_directions,num_inducing=num_inducing,
                                             minibatch_size=minibatch_size,
@@ -184,7 +184,7 @@ def main(**args):
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched, mll_type=mll_type,
                                             num_contour_quadrature = num_contour_quadrature,
-                                            watch_model=args["watch_model"],gamma=args["gamma"])
+                                            watch_model=args["watch_model"],gamma=args["gamma"], verbose=True)
 
     if torch.cuda.is_available():
         end.record()
