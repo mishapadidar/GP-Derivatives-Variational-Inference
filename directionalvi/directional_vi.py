@@ -53,6 +53,10 @@ class GPModel(gpytorch.models.ApproximateGP):
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(RBFKernelDirectionalGrad())
 
+        if "variational_strategy" in kwargs and kwargs["variational_strategy"] == "CIQ":
+          # stable initialization of lengthscale for CIQ
+          self.covar_module.base_kernel.lengthscale = 1/self.num_inducing
+
     def forward(self, x, **params):
         mean_x  = self.mean_module(x)
         covar_x = self.covar_module(x, **params)
@@ -151,7 +155,8 @@ def train_gp(train_dataset,num_inducing=128,
 
   # initialize model
   if use_ciq:
-    gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
+    #gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
+    gpytorch.settings.num_contour_quadrature._set_value(num_contour_quadrature)
     model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
   elif use_ngd:
     model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
