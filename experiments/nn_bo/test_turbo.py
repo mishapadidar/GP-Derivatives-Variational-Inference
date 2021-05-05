@@ -77,11 +77,18 @@ if mode == "DSVGP" or mode == "GradSVGP": deriv=True
 elif mode == "SVGP": deriv = False
 
 # load data
-data_file = data_file
 ff = loadmat(data_file)
 X_data = torch.tensor(ff['data'][:,:-1])
 y_data = torch.tensor(ff['data'][:,-1])
-dim_data = np.shape(X_data)[1]
+dim_data = X_data.shape[1]
+
+# standardize data
+lb = torch.min(X_data,axis=0)[0]
+ub = torch.max(X_data,axis=0)[0]
+X_data = (X_data - lb)/(ub-lb)
+med = torch.median(y_data)
+std = torch.std(y_data)
+y_data = (y_data - med)/std
 
 # initialize a neural network
 my_nn = NeuralNetwork(n_hidden_layers,dim_data)
@@ -104,11 +111,11 @@ def myObj(w):
     grad = my_nn.get_grad()
     # stack it
     fg = np.zeros(len(w)+1)
-    fg[0] = output
+    fg[0] = output.item()
     fg[1:] = grad
     return fg
   else:
-    return output
+    return output.item()
 
 if torch.cuda.is_available():
   turbo_device = 'cuda'
