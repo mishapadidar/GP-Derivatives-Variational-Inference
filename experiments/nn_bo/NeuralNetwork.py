@@ -20,7 +20,6 @@ class NeuralNetwork(nn.Module):
         self.n_params = sum(p.numel() for p in self.parameters())
 
     def forward(self, x):
-        self.eval()
         return self.lin_relu_stack(x)
 
 
@@ -37,18 +36,27 @@ class NeuralNetwork(nn.Module):
         keys.sort() # ensure we have the same order each time
 
         used_params = 0
-        for key in keys:
-            # Don't update if this is not a weight.
-            if not "weight" in key:
-                continue
+        #for key in keys:
+        for param in self.parameters():
             # get the size and shape of the parameter
-            param_size = state_dict[key].numel()
-            param_shape = state_dict[key].shape
+            #param_size = state_dict[key].numel()
+            #param_shape = state_dict[key].shape
+            param_size = param.numel()
+            param_shape = param.shape
             new_params = weights[used_params:used_params+param_size].reshape(param_shape)
             # Update the parameter.
-            state_dict[key].copy_(new_params)
+            #state_dict[key].copy_(new_params)
+            param.data = new_params
             # counter
             used_params +=param_size
+
+    def get_grad(self):
+        grads = []
+        for param in self.parameters():
+            grads.append(param.grad.view(-1))
+        grads = torch.cat(grads)
+
+        return grads
 
 
 if __name__ == "__main__":
@@ -57,8 +65,17 @@ if __name__ == "__main__":
   n_layers = n_hidden_layers+1
   random_data = torch.rand(dim)
   my_nn = NeuralNetwork(n_hidden_layers,dim)
+  my_nn.train()
   result = my_nn(random_data)
   print(result)
+  # compute the loss
+  mse_loss = nn.MSELoss()
+  y = torch.randn(1)
+  output = mse_loss(result,y)
+  print('loss: ',output)
+  output.backward()
+  grad = my_nn.get_grad() 
+  print('grad: ',grad)
   weights = torch.randn(my_nn.n_params)
   my_nn.update_weights(weights)
   result = my_nn(random_data)
