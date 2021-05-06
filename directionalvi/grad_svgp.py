@@ -49,6 +49,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
             mll_type="ELBO",
             num_contour_quadrature=15,
             watch_model=False,gamma=0.1,
+            verbose=True,
             **args):
     
     print_loss=True
