@@ -10,7 +10,8 @@ import sys
 sys.path.append("utils")
 
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
-from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
+#from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
+from DFreeDirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 from CiqDirectionalGradVariationalStrategy import CiqDirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 from utils.count_params import count_params
 try: # import wandb if watch model on weights&biases
@@ -52,10 +53,6 @@ class GPModel(gpytorch.models.ApproximateGP):
         # set the mean and covariance
         self.mean_module = gpytorch.means.ConstantMean()
         self.covar_module = gpytorch.kernels.ScaleKernel(RBFKernelDirectionalGrad())
-
-        if "variational_strategy" in kwargs and kwargs["variational_strategy"] == "CIQ":
-          # stable initialization of lengthscale for CIQ
-          self.covar_module.base_kernel.lengthscale = 1/self.num_inducing
 
     def forward(self, x, **params):
         mean_x  = self.mean_module(x)
@@ -155,8 +152,7 @@ def train_gp(train_dataset,num_inducing=128,
 
   # initialize model
   if use_ciq:
-    #gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
-    gpytorch.settings.num_contour_quadrature._set_value(num_contour_quadrature)
+    gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
     model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
   elif use_ngd:
     model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
@@ -224,14 +220,11 @@ def train_gp(train_dataset,num_inducing=128,
         x_batch = x_batch.cuda()
         y_batch = y_batch.cuda()
 
-      # select random columns of y_batch to train on
-      y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
+      # redo derivative directions b/c batch size is not consistent
+      derivative_directions = torch.eye(dim)[:num_directions]
+      derivative_directions = derivative_directions.repeat(len(x_batch),1)
       kwargs = {}
-      # repeat the derivative directions for each point in x_batch
-      kwargs['derivative_directions'] = derivative_directions.repeat(y_batch.size(0),1)
-
-      # pass in interleaved data... so kernel should also interleave
-      y_batch = y_batch.reshape(torch.numel(y_batch))
+      kwargs['derivative_directions'] = derivative_directions
 
       variational_optimizer.zero_grad()
       hyperparameter_optimizer.zero_grad()
@@ -265,7 +258,7 @@ def eval_gp(test_dataset,model,likelihood,
             mll_type="ELBO",num_directions=1,minibatch_size=1,minibatch_dim =1):
   
   assert num_directions == minibatch_dim
-
+  
   dim = len(test_dataset[0][0])
   n_test = len(test_dataset)
   test_loader = DataLoader(test_dataset, batch_size=minibatch_size, shuffle=False)

@@ -8,9 +8,9 @@ import numpy as np
 write_sbatch =True
 submit       =True
 
-dd = 1
-#M_list = np.array([200,400,600,800,1000,1200,1400,1600]) # matrix sizes
-M_list = np.array([200]) # matrix sizes
+dd = 0
+M_list = np.array([200,400,600,800,1000,1200,1400]) # matrix sizes
+#M_list = np.array([1000,1200,1400]) # matrix sizes
 ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
 
@@ -19,7 +19,7 @@ for ni in ni_list:
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['mode']                         = "DSVGP" # DSVGP, SVGP or GradSVGP
+  run_params['mode']                         = "SVGP" # DSVGP, SVGP or GradSVGP
   run_params['num_inducing']                 = ni
   run_params['num_directions']               = dd
   run_params['minibatch_size']               = 512
@@ -76,7 +76,7 @@ for ni in ni_list:
     f.write(f"#SBATCH -n 1\n")
     f.write(f"#SBATCH --mem=15000\n")
     f.write(f"#SBATCH -t 168:00:00\n")
-    f.write(f"#SBATCH --partition=default_gpu\n")
+    f.write(f"#SBATCH --partition=default_partition\n")
     f.write(f"#SBATCH --gres=gpu:1\n")
     f.write(f"python3 synthetic1.py {param_filename}\n")
     print(f"Dumped slurm file: {slurm_name}")
