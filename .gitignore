@@ -9,7 +9,6 @@ experiments/real_data
 experiments/.ipynb_checkpoints
 experiments/wandb
 experiments/postprocess/
-*.ipynb
 experiments/*.sub
 experiments/*-copy.py
 experiments/*.exp*
