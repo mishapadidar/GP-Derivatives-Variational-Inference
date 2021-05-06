@@ -51,7 +51,7 @@ lr_sched = None
 # training and testing data
 train_x = torch.rand(n,dim)
 test_x = torch.rand(n_test,dim)
-train_y = testfun.f(train_x, deriv=False)
+train_y = testfun.f(train_x, deriv=True)
 test_y = testfun.f(test_x, deriv=False)
 if torch.cuda.is_available():
     train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
