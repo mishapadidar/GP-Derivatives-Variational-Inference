@@ -1,7 +1,6 @@
 gpytorch_tutorials
 notebooks/*.ipynb_checkpoints
 __pycache__
-tests/*.sh
 experiments/LeNet/scratch
 slurm_output
 experiments/logs/a.*
