@@ -10,9 +10,9 @@ import sys
 import pickle
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
-sys.path.append("../")
-sys.path.append("../directionalvi/utils")
-sys.path.append("../directionalvi")
+sys.path.append("../../")
+sys.path.append("../../directionalvi/utils")
+sys.path.append("../../directionalvi")
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad
 from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy
 from directional_vi import *
@@ -199,7 +199,7 @@ def main(**args):
 
     # save the model
     if args["save_model"]:
-        torch.save(model.state_dict(), f"../data/{expname_train}.model")
+        torch.save(model.state_dict(), f"./postprocess/model_data/{expname_train}.model")
 
 
     # test
@@ -268,7 +268,7 @@ if __name__ == "__main__":
     # Directories for data/logs
     parser.add_argument("-ld", "--log-dir", type=str, default="./logs/")
     parser.add_argument("-dd", "--data-dir", type=str, default="./data/")
-    parser.add_argument("-sm", "--save_model", type=str2bool, nargs='?',const=True, default=False)
+    parser.add_argument("-sm", "--save_model", type=str2bool, nargs='?',const=True, default=True)
     parser.add_argument("--watch_model", type=str2bool, nargs='?',const=True, default=False) 
     parser.add_argument("--save_results", type=str2bool,nargs='?',const=True, default=False) #exp_script.py: error: argument --save_results: expected one argument
     parser.add_argument("--exp_name", type=str, default="-")
