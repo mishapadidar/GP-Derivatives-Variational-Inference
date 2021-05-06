@@ -16,7 +16,7 @@ class csv_dataset(Dataset):
         f is function value
         gi is ith g index
       """
-      self.df    = pd.read_csv(csv_file)
+      self.df = pd.read_csv(csv_file)
       # x indexes
       self.xidx  = np.where(['x' in ci for ci in self.df.columns])[0]
       # function values
