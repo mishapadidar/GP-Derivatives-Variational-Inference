@@ -220,14 +220,11 @@ def train_gp(train_dataset,num_inducing=128,
         x_batch = x_batch.cuda()
         y_batch = y_batch.cuda()
 
-      # select random columns of y_batch to train on
-      y_batch,derivative_directions = select_cols_of_y(y_batch,minibatch_dim,dim)
+      # redo derivative directions b/c batch size is not consistent
+      derivative_directions = torch.eye(dim)[:num_directions]
+      derivative_directions = derivative_directions.repeat(len(x_batch),1)
       kwargs = {}
-      # repeat the derivative directions for each point in x_batch
-      kwargs['derivative_directions'] = derivative_directions.repeat(y_batch.size(0),1)
-
-      # just take y values
-      y_batch = y_batch[:,0]
+      kwargs['derivative_directions'] = derivative_directions
 
       variational_optimizer.zero_grad()
       hyperparameter_optimizer.zero_grad()
