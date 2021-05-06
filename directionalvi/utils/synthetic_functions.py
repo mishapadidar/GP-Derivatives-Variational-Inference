@@ -29,7 +29,7 @@ class Branin_with_deriv(Branin):
         grad_x1 = grad_x2 * tmp2 + tmp3
         grad_x1 = grad_x1.reshape(*X.shape[:-1],1)
         grad_x2 = grad_x2.reshape(*X.shape[:-1],1)
-        return torch.cat([val, grad_x1, grad_x2], 1)
+        return torch.cat([val, grad_x1, grad_x2], -1)
 
     def get_bounds(self):
         lb = np.array([item[0] for item in self._bounds])
@@ -55,7 +55,7 @@ class SixHumpCamel_with_deriv(SixHumpCamel):
         grad_x2 = x1 + 2*x2*(4 * x2 ** 2 - 4) + (8 * x2) * x2 ** 2
         grad_x1 = grad_x1.reshape(*X.shape[:-1],1)
         grad_x2 = grad_x2.reshape(*X.shape[:-1],1)
-        return torch.cat([val, grad_x1, grad_x2], 1)
+        return torch.cat([val, grad_x1, grad_x2], -1)
 
     def get_bounds(self):
             lb = np.array([item[0] for item in self._bounds])
@@ -82,7 +82,7 @@ class StyblinskiTang_with_deriv(StyblinskiTang):
             cur_grad = 0.5*(4* X[..., i] ** 3 - 32 * X[..., i] + 5)
             # cur_grad = cur_grad.unsqueeze(-1)
             cur_grad = cur_grad.reshape(*X.shape[:-1],1)
-            val = torch.cat([val, cur_grad], 1)
+            val = torch.cat([val, cur_grad], -1)
         return val
 
     def get_bounds(self):
@@ -216,7 +216,7 @@ class Welch_with_deriv(Welch):
                          grad_x9, grad_x10, grad_x11,
                          grad_x12, grad_x13, grad_x14, 
                          grad_x15, grad_x16, grad_x17,
-                         grad_x18, grad_x19, grad_x20], 1)
+                         grad_x18, grad_x19, grad_x20], -1)
 
 
     def get_bounds(self):
@@ -312,6 +312,34 @@ class Welch2_with_deriv(Welch2):
                          grad_x15, grad_x16, grad_x17,
                          grad_x18, grad_x19, grad_x20], 1)
 
+
+    def get_bounds(self):
+            lb = np.array([item[0] for item in self._bounds])
+            ub = np.array([item[1] for item in self._bounds])
+            return lb, ub
+
+
+
+class SquaredSum(SyntheticTestFunction):
+    r"""
+        2D function squared sum
+        f(x, y) = (x-0.5)**2 + (y-0.5)**2
+    """
+    dim = 2
+    _bounds = [(0, 1) for _ in range(dim)]
+    _optimal_value = 0.0
+    _optimizers = [(0.5, 0.5)]
+    def evaluate_true(self, X: Tensor) -> Tensor:
+        fval = (X[..., 0]-0.5)**2 + (X[..., 1]-0.5)**2
+        return fval
+
+class SquaredSum_with_deriv(SquaredSum):
+    def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
+        val = super().evaluate_true(X)
+        val = val.reshape(*X.shape[:-1], 1)
+        g1 = 2*(X[..., 0]-0.5).reshape(*X.shape[:-1],1)
+        g2 = 2*(X[..., 1]-0.5).reshape(*X.shape[:-1],1)
+        return torch.cat([val, g1, g2], 1) 
 
     def get_bounds(self):
             lb = np.array([item[0] for item in self._bounds])
