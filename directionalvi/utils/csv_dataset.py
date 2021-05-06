@@ -16,7 +16,7 @@ class csv_dataset(Dataset):
         f is function value
         gi is ith g index
       """
-      self.df    = pd.read_csv(csv_file)
+      self.df = pd.read_csv(csv_file)
       # x indexes
       self.xidx  = np.where(['x' in ci for ci in self.df.columns])[0]
       # function values
@@ -25,6 +25,10 @@ class csv_dataset(Dataset):
       self.gidx  = np.where(['g' in ci for ci in self.df.columns])[0]
       # combined f and g indexes with f first
       self.fgidx = np.concatenate((self.fidx,self.gidx))
+      #print stuff
+      print(self.xidx)
+      print(self.fidx)      
+      
       # gradients option
       self.gradients = gradients
       # map to unit cube
@@ -35,7 +39,9 @@ class csv_dataset(Dataset):
       # mean and std of f
       self.favg = self.df.iloc[:,self.fidx].mean().to_numpy()[0]
       self.fstd = self.df.iloc[:,self.fidx].std().to_numpy()[0]
- 
+  
+      self.dim = len(self.xidx)
+      self.n = self.df.shape[0]
 
     def __len__(self):
       return len(self.df)

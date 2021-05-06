@@ -258,7 +258,7 @@ def eval_gp(test_dataset,model,likelihood,
             mll_type="ELBO",num_directions=1,minibatch_size=1,minibatch_dim =1):
   
   assert num_directions == minibatch_dim
-
+  
   dim = len(test_dataset[0][0])
   n_test = len(test_dataset)
   test_loader = DataLoader(test_dataset, batch_size=minibatch_size, shuffle=False)
