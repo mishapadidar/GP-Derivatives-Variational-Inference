@@ -106,7 +106,8 @@ class Turbo1:
 
         # Tolerances and counters
         self.n_cand = min(100 * self.dim, 5000)
-        self.failtol = np.ceil(np.max([4.0 / batch_size, self.dim / batch_size]))
+        #self.failtol = np.ceil(np.max([4.0 / batch_size, self.dim / batch_size]))
+        self.failtol = 5 # MP
         self.succtol = 3
         self.n_evals = 0
 
