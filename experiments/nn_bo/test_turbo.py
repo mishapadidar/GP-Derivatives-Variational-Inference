@@ -124,7 +124,7 @@ else:
 
 if mode == "DSVGP":
   # train
-  print("\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
+  print(f"\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
   from turbo1_grad import *
@@ -208,7 +208,7 @@ if mode == "DSVGP":
 
 elif mode == "SVGP":
   # train
-  print("\n\n---TuRBO with Traditional SVGP in dim {dim}---")
+  print(f"\n\n---TuRBO with Traditional SVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
   from turbo1 import *
