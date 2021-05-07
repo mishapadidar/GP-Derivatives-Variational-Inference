@@ -27,6 +27,7 @@ class NeuralNetwork(nn.Module):
         """
         method to update the weights of the nn
         """
+        assert len(weights) == self.n_params
         # dont track update in grad
         self.eval()
 
@@ -60,11 +61,12 @@ class NeuralNetwork(nn.Module):
 
 
 if __name__ == "__main__":
-  dim = 4
-  n_hidden_layers = 2
+  dim = 18
+  n_hidden_layers = 3
   n_layers = n_hidden_layers+1
   random_data = torch.rand(dim)
   my_nn = NeuralNetwork(n_hidden_layers,dim)
+  print(my_nn.n_params)
   my_nn.train()
   result = my_nn(random_data)
   print(result)
