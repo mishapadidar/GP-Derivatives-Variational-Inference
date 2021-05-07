@@ -1,0 +1,53 @@
+#!/bin/bash
+#SBATCH -J  basic                 # Job name
+#SBATCH -o ../../slurm_output/job_%j.out    # Name of stdout output file(%j expands to jobId)
+#SBATCH -e ../../slurm_output/job_%j.err    # Name of stderr output file(%j expands to jobId)
+#SBATCH --get-user-env                     # Tells sbatch to retrieve the users login environment
+#SBATCH -N 1                               # Total number of nodes requested
+#SBATCH -n 16                               # Total number of cores requested
+#SBATCH --mem=32G                        # Total amount of (real) memory requested (per node)
+#SBATCH -t 168:00:00                       # Time limit (hh:mm:ss)
+#SBATCH --partition=default_partition      # Request partition for resource 
+##SBATCH --exclude=marschner-compute01      # Request partition for resource 
+#SBATCH --exclude=joachims-compute-01,sablab-gpu-11
+#SBATCH --gres=gpu:1                       # Specify a list of generic consumable resources (per node)
+
+
+. /home/xz584/anaconda3/etc/profile.d/conda.sh
+conda activate DSVGP
+dataset="real-bunny" 
+
+# exp setups
+# fix some setups for this dataset
+batch_size=500
+watch_model=True
+# read other arguments from command line when sbatch this job
+model=DSVGP
+variational_strategy='CIQ'
+variational_distribution='standard'
+num_inducing=${1}
+num_directions=${2}
+num_epochs=${3}
+exp_name=${4}
+lr=${5}
+lr_ngd=0.1
+num_contour_quad=15
+seed=${6}
+lr_sched=${7}
+save_results=True
+mll_type='ELBO'
+gamma=${8}
+# compare different methods, comment out the chunk if not comparing with this method
+# find runlogs in logs folder
+python -u exp_bunny.py --dataset ${dataset} --variational_strategy ${variational_strategy} \
+                       --variational_distribution ${variational_distribution} \
+                       --num_inducing ${num_inducing} \
+                       --num_directions ${num_directions} --num_epochs ${num_epochs} \
+                       --batch_size ${batch_size} --model ${model} \
+                       --lr ${lr} --lr_ngd ${lr_ngd} --num_contour_quad ${num_contour_quad} \
+                       --watch_model ${watch_model} \
+                       --exp_name ${exp_name} --seed ${seed} --lr_sched ${lr_sched} --save_results ${save_results} \
+                       --mll_type ${mll_type} --gamma ${gamma}
+
+
+
