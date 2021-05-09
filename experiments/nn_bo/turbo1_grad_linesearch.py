@@ -269,6 +269,30 @@ class Turbo1Grad:
         # NOTE: This may not be robust to noise, in which case the posterior mean of the GP can be used instead
         assert X.min() >= 0.0 and X.max() <= 1.0   # MP: turned off b/c model improv
 
+        # destandardize X
+        X = from_unit_cube(X,self.lb,self.ub)
+        # find TR center 
+        x_center = X[fX[:, 0].argmin().item(), :][None, :]
+        g_center = fX[fX[:, 0].argmin().item(), 1:][None, :] # gradient
+        # max learning rate to stay within cube boundary
+        b  = -(self.ub-x_center)/g_center
+        c  = -(self.lb-x_center)/g_center
+        d  = np.hstack((b,c)).flatten()
+        alpha_max= np.min([dj for dj in d if dj>=0])
+        print(alpha_max)
+        # generate line search points
+        betas = (2.0**np.arange(-22,4,1)) # 1e-8 to 16
+        betas = betas[betas < alpha_max]
+        if len(betas) > 0:
+          X_temp = x_center.flatten()-np.array([ beta*g_center.flatten() for beta in betas])
+          fs  = [self.f(xx)[0] for xx in X_temp]
+          print(np.argmin(fs),np.min(fs))
+          # map points to unit cube
+          X_temp = to_unit_cube(X_temp,self.lb,self.ub)
+
+        # restandardize X
+        X = to_unit_cube(X,self.lb,self.ub)
+
         ## Standardize function values.
         mu, sigma = np.median(fX, axis=0)[0], fX.std(axis=0)[0]
         fX[:,0] = (deepcopy(fX[:,0]) - mu) / sigma
@@ -296,7 +320,7 @@ class Turbo1Grad:
 
         # Create the trust region boundaries
         x_center = X[fX[:, 0].argmin().item(), :][None, :]
-        g_center = fX[fX[:, 0].argmin().item(), 1:][None, :] # gradient
+        #g_center = fX[fX[:, 0].argmin().item(), 1:][None, :] # gradient
         weights = gp.covar_module.base_kernel.lengthscale.cpu().detach().numpy().ravel()
         weights = weights / weights.mean()  # This will make the next line more stable
         weights = weights / np.prod(np.power(weights, 1.0 / len(weights)))  # We now have weights.prod() = 1
@@ -319,29 +343,11 @@ class Turbo1Grad:
         X_cand = x_center.copy() * np.ones((self.n_cand, self.dim))
         X_cand[mask] = pert[mask]
 
-        # distance to TR boundary
-        b  = -(1.0-x_center)/g_center
-        c  = -(0.0-x_center)/g_center
-        d  = np.hstack((b,c)).flatten()
-        alpha_max= np.min([dj for dj in d if dj>=0])
-        #print(np.max(x_center),np.min(x_center),alpha_max)
-
-        ## generate step sizes
-        betas = (2.0**np.arange(-20,4,1)) # 1e-8 to 16
-        betas = betas[betas < alpha_max]
-        X_temp = x_center.flatten()-np.array([ beta*g_center.flatten() for beta in betas])
-        #if self.failcount == 1: # just do linesearch if failing
-        #  num_c = max(0,self.batch_size-len(X_temp))
-        #  X_cand = np.vstack((X_cand[0:num_c],X_temp))
-        if self.failcount > 1: # just use TS
-          pass
-        else:
+        # append linesearch points
+        if self.failcount < 1 and len(betas) > 0:
           X_cand = np.vstack((X_cand,X_temp))
-
-        #X_temp = from_unit_cube(X_temp,self.lb,self.ub)
-        #fs  = [self.f(xx)[0] for xx in X_temp]
-        #print(np.argmin(fs),np.min(fs))
-        #print(np.all(X_temp[np.argmin(fs)] <= self.ub),np.all(X_temp[np.argmin(fs)] >= self.lb))
+        else: # just use TS
+          pass
 
         # Figure out what device we are running on
         if len(X_cand) < self.min_cuda:
