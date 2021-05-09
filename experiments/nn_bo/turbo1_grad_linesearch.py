@@ -329,14 +329,14 @@ class Turbo1Grad:
         ## generate step sizes
         betas = (2.0**np.arange(-20,4,1)) # 1e-8 to 16
         betas = betas[betas < alpha_max]
-        X_temp = x_center.flatten()-np.array([ beta*g_center.flatten() for beta in betas])
         #if self.failcount == 1: # just do linesearch if failing
         #  num_c = max(0,self.batch_size-len(X_temp))
         #  X_cand = np.vstack((X_cand[0:num_c],X_temp))
-        if self.failcount > 1: # just use TS
-          pass
-        else:
+        if self.failcount < 1 and len(betas) > 0:
+          X_temp = x_center.flatten()-np.array([ beta*g_center.flatten() for beta in betas])
           X_cand = np.vstack((X_cand,X_temp))
+        else: # just use TS
+          pass
 
         #X_temp = from_unit_cube(X_temp,self.lb,self.ub)
         #fs  = [self.f(xx)[0] for xx in X_temp]
