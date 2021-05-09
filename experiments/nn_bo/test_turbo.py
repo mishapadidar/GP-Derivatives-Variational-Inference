@@ -96,9 +96,10 @@ dim = my_nn.n_params
 
 # wrap the objective
 def myObj(w):
-  my_nn.train()
   # set the weights
   my_nn.update_weights(torch.tensor(w))
+  # training mode to track grad
+  my_nn.train()
   # predict
   preds = my_nn(X_data)
   # compute the loss
@@ -112,7 +113,8 @@ def myObj(w):
     # stack it
     fg = np.zeros(len(w)+1)
     fg[0] = output.item()
-    fg[1:] = grad
+    fg[1:] = np.copy(grad.detach().numpy())
+    my_nn.zero_grad() # zero the gradients for next time
     return fg
   else:
     return output.item()
@@ -124,7 +126,7 @@ else:
 
 if mode == "DSVGP":
   # train
-  print("\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
+  print(f"\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
   from turbo1_grad_linesearch import *
@@ -209,7 +211,7 @@ if mode == "DSVGP":
 
 elif mode == "SVGP":
   # train
-  print("\n\n---TuRBO with Traditional SVGP in dim {dim}---")
+  print(f"\n\n---TuRBO with Traditional SVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
   from turbo1 import *
