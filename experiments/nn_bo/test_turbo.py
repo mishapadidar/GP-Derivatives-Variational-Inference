@@ -127,7 +127,8 @@ if mode == "DSVGP":
   print(f"\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-  from turbo1_grad import *
+  from turbo1_grad_linesearch import *
+  #from turbo1_grad import *
   def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
     # expects train_x on unit cube and train_y standardized
     # make a trainable model for TuRBO
@@ -171,11 +172,11 @@ if mode == "DSVGP":
     derivative_directions = derivative_directions.repeat(n,1)
     kwargs['derivative_directions'] = derivative_directions.to(X_cand.device).float()
     preds  = likelihood(model(X_cand,**kwargs))
-    #y_cand = preds.sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
-    #y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
+    y_cand = preds.sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
+    y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
 
     # only use mean
-    y_cand = preds.mean.repeat(n_samples,1).t() # (n,n_samples)
+    #y_cand = preds.mean.repeat(n_samples,1).t() # (n,n_samples)
 
     ## only use distribution of f(x) to predict (dont use joint covariance with derivatives)
     #mean  = preds.mean[::num_directions+1]
