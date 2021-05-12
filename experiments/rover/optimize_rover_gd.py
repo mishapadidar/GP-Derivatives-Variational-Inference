@@ -6,7 +6,7 @@ import pickle
 # generate a starting point
 dim = 200
 x0 = np.random.uniform(-5,5,size=dim)
-max_iter = 10
+max_iter = 1000
 gtol = 1e-7
 # optimize
 xopt,X = gradient_descent(rover_obj,rover_grad,x0,max_iter=max_iter,gtol=gtol)
@@ -16,5 +16,6 @@ print(fX[-1])
 d = {}
 d['X'] = X
 d['fX'] = fX
-outfilename = f"./output/rover_GD_{max_iter}_iter.pickle"
+d['mode'] = "GD"
+outfilename = f"./output/data_rover_GD_{max_iter}_iter.pickle"
 pickle.dump(d,open(outfilename,"wb"))
