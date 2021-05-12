@@ -90,8 +90,8 @@ if mode == "DSVGP":
   print(f"\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-  from turbo1_grad_linesearch import *
-  # from turbo1_grad import *
+  #from turbo1_grad_linesearch import *
+  from turbo1_grad import *
   def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
     # expects train_x on unit cube and train_y standardized
     # make a trainable model for TuRBO
