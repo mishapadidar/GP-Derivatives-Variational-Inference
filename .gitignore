@@ -19,3 +19,7 @@ experiments/bunny/wandb
 experiments/bunny/results
 experiments/lenet_bo
 directionalvi/directional_vi-fixed_inducing.py
+experiments/GNN_bo/results
+experiments/GNN_bo/runlogs
+experiments/GNN_bo/plots
+experiments/GNN_bo/GCN/data
