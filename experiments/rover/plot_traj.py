@@ -20,10 +20,10 @@ for ii in range(len(data_files)):
   # load
   d = pickle.load(open(ff, "rb"))  
   if d['mode'] == 'Vanilla':
-    label = d['mode'] + f" {d['turbo_batch_size']}"
+    label = "TuRBO" 
   elif d['mode'] == 'DSVGP' and d['mll_type'] == 'PLL':
     M = d['num_inducing']*(d['num_directions']+1)
-    label = "DPPGPR" + f"; M={M}" + f" {d['turbo_batch_size']}"
+    label = f"TuRBO-DPPGPR{d['num_directions']}"
   elif d['mode'] == "GD":
     label= d['mode']
   # minimum function values
@@ -43,18 +43,18 @@ for ii in range(len(data_files)):
 #plt.plot(means[0],linewidth=5,markersize=12,label="DPPGPR")
 #plt.plot(means[1],linewidth=5,markersize=12,label="PPGPR")
 # plot
-rc = {'figure.figsize':(10,5),
-      'axes.facecolor':'white',
-      'axes.grid' : True,
-      'grid.color': '.8',
-      'font.family':'Times New Roman',
-      'font.size' : 15}
-plt.rcParams.update(rc)
+#rc = {'figure.figsize':(10,5),
+#      'axes.facecolor':'white',
+#      'axes.grid' : True,
+#      'grid.color': '.8',
+#      'font.family':'Times New Roman',
+#      'font.size' : 15}
+#plt.rcParams.update(rc)
 #sns.set()
-#sns.set_style("whitegrid")
-#sns.set_context("paper", font_scale=2.0)
+sns.set_style("whitegrid")
+sns.set_context("paper", font_scale=1.5)
 plt.legend()
-plt.title("Convergence of TuRBO for varying Variational GP")
+plt.title("Optimization Convergence on Rover Problem")
 plt.yscale("log")
 plt.ylabel("f(x)")
 plt.xlabel("Evaluation")
