@@ -6,9 +6,9 @@ import numpy as np
 
 # flags
 write_sbatch =True
-submit       =False
+submit       =True
 
-dd = 1
+dd = 0
 M_list = np.array([400]) # matrix sizes
 ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
