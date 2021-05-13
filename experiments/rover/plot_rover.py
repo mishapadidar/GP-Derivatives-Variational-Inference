@@ -33,7 +33,7 @@ for ii in range(len(data_files)):
   plt.plot(X[:,0],X[:,1],linewidth=5,markersize=12,color=colors[ii],label=label)
 
 # plot the waypoints
-W = np.array([[8,15,3,-4],[16,7,6,-4],[16,12,-6,-4],[0,0,0,0]])
+W = np.array([x0,[8,15,3,-4],[16,7,6,-4],[16,12,-6,-4],[0,0,0,0]])
 plt.scatter(W[:,0],W[:,1],color='k',s=50,label='waypoints')
 # sns.set_style("whitegrid")
 # sns.set_context("paper", font_scale=1.5)
