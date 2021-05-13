@@ -9,7 +9,9 @@ x0 = np.random.uniform(-5,5,size=dim)
 max_iter = 1000
 gtol = 1e-7
 # optimize
-xopt,X = gradient_descent(rover_obj,rover_grad,x0,max_iter=max_iter,gtol=gtol)
+def noisy_rover(u):
+  return rover_obj(u) + 1e1*np.random.randn()
+xopt,X = gradient_descent(noisy_rover,rover_grad,x0,max_iter=max_iter,gtol=gtol)
 fX = np.array([rover_obj(x) for x in X])
 print(fX[-1])
 # save data

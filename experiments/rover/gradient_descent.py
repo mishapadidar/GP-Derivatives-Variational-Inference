@@ -20,7 +20,7 @@ def gradient_descent(Loss,grad,x0,max_iter=1000,gtol=1e-3):
   # stop when gradient is flat (within tolerance)
   nn = 0
   while np.linalg.norm(g_k) > gtol and nn < max_iter:
-    if nn%100 == 0:
+    if nn%1 == 0:
       print(nn,f_k)
     # double the step size to counter backtracking
     mu_k = 2*mu_k;
@@ -41,7 +41,7 @@ def gradient_descent(Loss,grad,x0,max_iter=1000,gtol=1e-3):
       # break if mu is too small
       if mu_k <= mu_min:
         print('ERROR: mu too small.')
-        return x_k
+        return x_k,X
 
     # reset for next iteration
     x_k   = np.copy(x_kp1)
