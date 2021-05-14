@@ -10,7 +10,16 @@ import glob
 data_files = glob.glob("./output/data*.pickle")
 colors = pl.cm.jet(np.linspace(0,1,len(data_files)))
 
-means = np.zeros((2,1000))
+rc = {'figure.figsize':(10,5),
+      'axes.facecolor':'white',
+      'axes.grid' : True,
+      'grid.color': '.8',
+      'font.family':'Times New Roman',
+      'font.size' : 20}
+plt.rcParams.update(rc)
+plt.figure(figsize=(10,10))
+
+means = np.zeros((2,2000))
 n_type = np.zeros(2)
 data = []
 for ii in range(len(data_files)):
@@ -30,29 +39,22 @@ for ii in range(len(data_files)):
   fX = d['fX']
   fXmin = np.minimum.accumulate(fX)
   # accumulate means
-  #if d['mode'] == "DPPGPR":
-  #  means[0] += fXmin
-  #  n_type[0] += 1
-  #if d['mode'] == "Vanilla":
-  #  means[1] += fXmin
-  #  n_type[1] += 1
-  plt.plot(fXmin,linewidth=5,markersize=12,color=colors[ii],label=label)
+  if d['mode'] == "DSVGP":
+    means[0] += fXmin
+    n_type[0] += 1
+  if d['mode'] == "Vanilla":
+    means[1] += fXmin
+    n_type[1] += 1
+  #plt.plot(fXmin,linewidth=5,markersize=12,color=colors[ii],label=label)
 
-#means[0] = means[0]/n_type[0]
-#means[1] = means[1]/n_type[1]
-#plt.plot(means[0],linewidth=5,markersize=12,label="DPPGPR")
-#plt.plot(means[1],linewidth=5,markersize=12,label="PPGPR")
+means[0] = means[0]/n_type[0]
+means[1] = means[1]/n_type[1]
+plt.plot(means[0],linewidth=5,markersize=12,label="TuRBO-DPPGPR1")
+plt.plot(means[1],linewidth=5,markersize=12,label="TuRBO")
 # plot
-#rc = {'figure.figsize':(10,5),
-#      'axes.facecolor':'white',
-#      'axes.grid' : True,
-#      'grid.color': '.8',
-#      'font.family':'Times New Roman',
-#      'font.size' : 15}
-#plt.rcParams.update(rc)
 #sns.set()
-sns.set_style("whitegrid")
-sns.set_context("paper", font_scale=1.5)
+#sns.set_style("whitegrid")
+#sns.set_context("paper", font_scale=1.5)
 plt.legend()
 plt.title("Optimization Convergence on Rover Problem")
 plt.yscale("log")
