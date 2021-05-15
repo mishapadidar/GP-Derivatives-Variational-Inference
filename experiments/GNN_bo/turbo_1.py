@@ -74,7 +74,7 @@ class Turbo1:
         assert isinstance(verbose, bool) and isinstance(use_ard, bool)
         assert max_cholesky_size >= 0 and isinstance(batch_size, int)
         assert n_training_steps >= 30 and isinstance(n_training_steps, int)
-        assert max_evals > n_init and max_evals > batch_size
+        assert max_evals >= n_init and max_evals > batch_size
         assert device == "cpu" or device == "cuda"
         assert dtype == "float32" or dtype == "float64" or dtype == "double"
         if device == "cuda":
@@ -257,7 +257,7 @@ class Turbo1:
             X_init = latin_hypercube(self.n_init, self.dim)
             X_init = from_unit_cube(X_init, self.lb, self.ub)
             fX_init = np.array([[self.f(x)] for x in X_init])
-
+            print(f"collect initial {self.n_init} samples")
             # Update budget and set as initial data for this TR
             self.n_evals += self.n_init
             self._X = deepcopy(X_init)
