@@ -94,13 +94,15 @@ exp_name = args["exp_name"]
 if args["model"]=="SVGP":
   args["derivative"]=False
   expname_train = f"{args['dataset']}_{args['model']}_m{num_inducing}_epochs{num_epochs}_turboN{turbo_max_evals}_turbo_bs{turbo_batch_size}_exp{exp_name}"
-elif args["model"]=="TURBO":
+elif args["model"]=="TURBO" or args["model"]=="BO":
   args["derivative"]=False
-  expname_train = f"{args['dataset']}_{args['model']}_turboN{turbo_max_evals}_turbo_bs{turbo_batch_size}_exp{exp_name}"
+  expname_train = f"{args['dataset']}_{args['model']}_m{num_inducing}_epochs{num_epochs}_turboN{turbo_max_evals}_turbo_bs{turbo_batch_size}_exp{exp_name}"
 elif args["model"]=="DSVGP" or args["model"]=="GradSVGP":
   args["derivative"]=True
   expname_train = f"{args['dataset']}_{args['model']}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_turboN{turbo_max_evals}_turbo_bs{turbo_batch_size}_exp{exp_name}"
-
+elif args["model"]=="random":
+  args["derivative"]=False
+  expname_train = f"{args['dataset']}_{args['model']}_m{num_inducing}_turboN{turbo_max_evals}_exp{exp_name}"
 expname_test = f"{expname_train}"
 print(expname_test)
 print("Args:\n")
@@ -117,12 +119,12 @@ if os.path.exists(data_dir) is False:
 torch.set_default_dtype(torch.float64)
 torch.random.manual_seed(args["seed"])  
 
-# if torch.cuda.is_available():
-#     start = torch.cuda.Event(enable_timing=True)
-#     end = torch.cuda.Event(enable_timing=True)
-#     start.record()
-# else:
-#     t1 = time.time_ns()	
+if torch.cuda.is_available():
+    start = torch.cuda.Event(enable_timing=True)
+    end = torch.cuda.Event(enable_timing=True)
+    start.record()
+else:
+    t1 = time.time_ns()	
 
 # load data for GCN
 dataset = "PubMed"
@@ -143,7 +145,7 @@ print("\nDimension of GCN:", dim)
 
 turbo_lb = np.repeat([-10.],dim)
 turbo_ub = np.repeat([10.],dim)
-turbo_n_init = num_inducing
+turbo_n_init = 400
 
 # wrap the objective
 def objective(w):
@@ -318,6 +320,51 @@ elif args["model"] == "TURBO":
     problem.optimize()
     X_turbo, fX_turbo = problem.X, problem.fX.flatten()  # Evaluated points
 
+elif args["model"] == "BO":
+  assert turbo_batch_size == 1
+  print(f"\n\n---BO with  GP in dim {dim}---")
+  from bo import *
+  # initialize TuRBO
+  problem = myBO(
+        objective,
+        lb=turbo_lb,ub=turbo_ub,
+        n_init=turbo_n_init,
+        max_evals=turbo_max_evals,
+        batch_size=turbo_batch_size,
+        verbose=True,
+        use_ard=True,
+        max_cholesky_size=2000,
+        n_training_steps=num_epochs,
+        min_cuda=0,
+        device=turbo_device,
+        dtype="float64")
+  # optimize
+  problem.optimize()
+  X_turbo, fX_turbo = problem.X, problem.fX.flatten()  # Evaluated points
+
+elif args["model"] == "random":
+  print(f"\n\n---Random sampling in dim {dim}---")
+  from turbo_1 import *
+  # use turbo_max_evals as n_init
+  assert turbo_batch_size == 1 
+  problem = Turbo1(
+        objective,
+        lb=turbo_lb,ub=turbo_ub,
+        n_init=turbo_max_evals,
+        max_evals=turbo_max_evals,
+        batch_size=turbo_batch_size,
+        verbose=True,
+        use_ard=True,
+        max_cholesky_size=2000,
+        n_training_steps=num_epochs,
+        min_cuda=0,
+        device=turbo_device,
+        dtype="float64")
+  # optimize
+  problem.optimize()
+  X_turbo, fX_turbo = problem.X, problem.fX.flatten()  # Evaluated points
+  
+
 
 def test(data, train=True):
     model.eval()
@@ -357,16 +404,16 @@ xopt = X_turbo[idx_opt]
 print(f"fopt = {fopt}")
 train_acc_list, test_acc_list = collect_acc(X_turbo)
 
-# if torch.cuda.is_available():
-#     end.record()
-#     torch.cuda.synchronize()
-#     total_time = start.elapsed_time(end)/1e3
-#     sys.stdout.flush()
-# else:    
-#     t2 = time.time_ns()
-#     total_time = (t2-t1)/1e9	
+if torch.cuda.is_available():
+    end.record()
+    torch.cuda.synchronize()
+    total_time = start.elapsed_time(end)/1e3/60	
+    sys.stdout.flush()
+else:    
+    t2 = time.time_ns()
+    total_time = (t2-t1)/1e9/60	
 
-# print(f"Total time cost:", total_time)
+print(f"Total time cost (min):", total_time)
 
 # dump the data
 outdata = {}
@@ -376,7 +423,7 @@ outdata['train_acc_list'] = train_acc_list
 outdata['test_acc_list'] = test_acc_list
 outdata['xopt'] = xopt
 outdata['fopt'] = fopt
-# outdata['total_time_sec'] = total_time
+outdata['total_time_min'] = total_time
 # add the run params
 outdata.update(args)
 pickle.dump(outdata,open(data_filename,"wb"))
