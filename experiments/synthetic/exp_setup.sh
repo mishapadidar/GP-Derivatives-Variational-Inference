@@ -34,4 +34,4 @@ python -u exp_script.py \
     --watch_model ${watch_model} --exp_name ${exp_name} --seed ${seed}\
     --lr_sched ${lr_sched} --save_results ${save_results} --mll_type ${mll_type}\
     --gamma ${gamma}\
-    2>&1 | tee logs/a.out_${dataset}_${model}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epoch${num_epochs}_${variational_distribution}_${variational_strategy}_exp${expname}
+    2>&1 | tee logs/a.out_${dataset}_${model}_train${n_train}_test${n_test}_m${num_inducing}_p${num_directions}_epoch${num_epochs}_${variational_distribution}_${variational_strategy}_exp${expname}_${mll_type}
