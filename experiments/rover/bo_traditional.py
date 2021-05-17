@@ -211,7 +211,7 @@ class Turbo1:
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(self.max_cholesky_size):
             X_cand_torch = torch.tensor(X_cand).to(device=device, dtype=dtype)
             preds = gp.likelihood(gp(X_cand_torch))
-            y_cand = preds.mean.detach().numpy() - self.lcb_beta*preds.variance.detach().numpy()
+            y_cand = preds.mean.cpu().detach().numpy() - self.lcb_beta*preds.variance.cpu().detach().numpy()
 
         # Remove the torch variables
         del X_torch, y_torch, X_cand_torch, gp
@@ -307,6 +307,12 @@ if __name__ == '__main__':
   ub = 5 * np.ones(dim)
   batch_size = 5
   num_epochs = 100
+
+  if torch.cuda.is_available():
+    turbo_device = 'cuda'
+  else:
+    turbo_device = 'cpu'
+
   # initialize TuRBO
   problem = Turbo1(
         rover_obj,
@@ -319,7 +325,7 @@ if __name__ == '__main__':
         max_cholesky_size=2000,
         n_training_steps=num_epochs,
         min_cuda=0,
-        device='cpu',
+        device=turbo_device,
         dtype="float64")
 
   # optimize
