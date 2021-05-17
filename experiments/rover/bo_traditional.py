@@ -97,7 +97,7 @@ class Turbo1:
         self.ub = ub
 
         # LCB beta
-        self.lcb_beta = 0.5
+        self.lcb_beta = 10.0
 
         # Settings
         self.n_init = n_init
@@ -115,7 +115,7 @@ class Turbo1:
         self.lengthscales = np.zeros((0, self.dim)) if self.use_ard else np.zeros((0, 1))
 
         # Tolerances and counters
-        self.n_cand = min(100 * self.dim, 1000)
+        self.n_cand = min(100 * self.dim, 5000)
         self.failtol = np.ceil(np.max([4.0 / batch_size, self.dim / batch_size]))
         self.succtol = 3
         self.n_evals = 0
@@ -223,13 +223,14 @@ class Turbo1:
 
     def _select_candidates(self, X_cand, y_cand):
         """Select candidates."""
-        idx_sort = np.argsort(y_cand)
+        idx_sort = np.argsort(y_cand)[:batch_size]
         X_next = X_cand[idx_sort,:]
         return X_next
 
     def optimize(self):
         """Run the full optimization process."""
         while self.n_evals < self.max_evals:
+
             if len(self._fX) > 0 and self.verbose:
                 n_evals, fbest = self.n_evals, self._fX.min()
                 print(f"{n_evals}) Restarting with fbest = {fbest:.4}")
@@ -259,6 +260,7 @@ class Turbo1:
 
             # Thompson sample to get next suggestions
             while self.n_evals < self.max_evals and self.length >= self.length_min:
+            
                 # Warp inputs
                 X = to_unit_cube(deepcopy(self._X), self.lb, self.ub)
 
@@ -302,11 +304,17 @@ if __name__ == '__main__':
 
   dim = 200
   n_init = 100
-  max_evals = 2000
+  max_evals = 2000 
   lb = -5 * np.ones(dim)
   ub = 5 * np.ones(dim)
   batch_size = 5
-  num_epochs = 100
+  num_epochs = 30
+
+  from datetime import datetime
+  now     = datetime.now()
+  seed    = int("%d%.2d%.2d%.2d%.2d"%(now.month,now.day,now.hour,now.minute,now.second))
+  barcode = "%d%.2d%.2d%.2d%.2d%.2d"%(now.year,now.month,now.day,now.hour,now.minute,now.second)
+  np.random.seed(seed)
 
   if torch.cuda.is_available():
     turbo_device = 'cuda'
@@ -336,7 +344,7 @@ if __name__ == '__main__':
   d['X']  = X
   d['fX'] = fX
   d['mode'] = "BO-LCB"
-  outfilename = f"./output/data_rover_BO_{max_evals}_evals.pickle"
+  outfilename = f"./output/data_rover_BO_{max_evals}_evals_{barcode}.pickle"
   import pickle
   pickle.dump(d,open(outfilename,"wb"))
 
