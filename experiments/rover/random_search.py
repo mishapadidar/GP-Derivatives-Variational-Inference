@@ -7,7 +7,7 @@ import sys
 if __name__ == '__main__':
 
   dim = 200
-  max_evals = 10
+  max_evals = 2000
   lb = -5 * np.ones(dim)
   ub = 5 * np.ones(dim)
   batch_size = 5

@@ -308,7 +308,7 @@ if __name__ == '__main__':
   lb = -5 * np.ones(dim)
   ub = 5 * np.ones(dim)
   batch_size = 5
-  num_epochs = 30
+  num_epochs = 100
 
   from datetime import datetime
   now     = datetime.now()
