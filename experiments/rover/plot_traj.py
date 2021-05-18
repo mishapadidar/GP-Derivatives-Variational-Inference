@@ -19,8 +19,10 @@ rc = {'figure.figsize':(10,5),
 plt.rcParams.update(rc)
 plt.figure(figsize=(10,10))
 
-means = np.zeros((2,2000))
-n_type = np.zeros(2)
+num_curves = 4
+means  = np.zeros((num_curves,2000))
+std    = np.zeros((num_curves,2000))
+n_type = np.zeros(num_curves)
 data = []
 for ii in range(len(data_files)):
   ff = data_files[ii]
@@ -41,16 +43,33 @@ for ii in range(len(data_files)):
   # accumulate means
   if d['mode'] == "DSVGP":
     means[0] += fXmin
+    std[0] += fXmin**2
     n_type[0] += 1
   if d['mode'] == "Vanilla":
     means[1] += fXmin
+    std[1] += fXmin**2
     n_type[1] += 1
+  if d['mode'] == "Random Search":
+    means[2] += fXmin
+    std[2] += fXmin**2
+    n_type[2] += 1
+  if d['mode'] == "BO-LCB":
+    means[3] += fXmin
+    std[3] += fXmin**2
+    n_type[3] += 1
+
   #plt.plot(fXmin,linewidth=5,markersize=12,color=colors[ii],label=label)
 
-means[0] = means[0]/n_type[0]
-means[1] = means[1]/n_type[1]
-plt.plot(means[0],linewidth=5,markersize=12,label="TuRBO-DPPGPR1")
-plt.plot(means[1],linewidth=5,markersize=12,label="TuRBO")
+means = np.diag(1/n_type) @ means
+std = np.sqrt(np.diag(1/n_type)@ std - means**2)
+plt.plot(means[0],linewidth=3,markersize=12,label="TuRBO-DPPGPR1")
+plt.fill_between(np.arange(0,2000),means[0]-std[0], means[0]+std[0],alpha=0.7)
+plt.plot(means[1],linewidth=3,markersize=12,label="TuRBO")
+plt.fill_between(np.arange(0,2000),means[1]-std[1], means[1]+std[1],alpha=0.7)
+plt.plot(means[2],linewidth=3,markersize=12,label="Random Search")
+plt.fill_between(np.arange(0,2000),means[2]-std[2], means[2]+std[2],alpha=0.7)
+plt.plot(means[3],linewidth=3,markersize=12,label="BO-LCB")
+plt.fill_between(np.arange(0,2000),means[3]-std[3], means[3]+std[3],alpha=0.7)
 # plot
 #sns.set()
 #sns.set_style("whitegrid")
