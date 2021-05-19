@@ -24,8 +24,16 @@ for ff in data_files:
   attrib['mse'] = d['test_mse'].item()
   attrib['test_time']  = d['test_time']
   attrib['train_time'] = d['train_time']
-  # add an indicator attribute for plotting
-  attrib['run'] = d['mode'] + str(d['num_directions'])
+  if d['mode'] == 'SVGP' and d['mll_type'] == 'PLL':
+    d['mode'] = "PPGPR"
+  elif d['mode'] == 'DSVGP' and d['mll_type'] == 'PLL':
+    d['mode'] = "DPPGPR"
+  elif d['mode'] == 'GradSVGP' and d['mll_type'] == 'PLL':
+    d['mode'] = "GradPPGPR"
+  if "D" in d['mode'] or "Grad" in d['mode']:
+    attrib['run'] = d['mode'] + str(d['num_directions'])
+  else:
+    attrib['run'] = d['mode']
   data.append(attrib)
 # make a pandas df
 df = pd.DataFrame.from_dict(data,orient='columns')
