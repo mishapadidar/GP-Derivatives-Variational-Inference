@@ -8,6 +8,8 @@ import glob
 # read the data
 data_files = glob.glob("./output/data_stell_regress_*.pickle")
 
+plt.figure(figsize=(10,10))
+
 data = []
 for ff in data_files:
   # attributes
@@ -24,11 +26,15 @@ for ff in data_files:
   attrib['mse'] = d['test_mse'].item()
   attrib['test_time']  = d['test_time']
   attrib['train_time'] = d['train_time']
+  attrib['run'] = d['mode']
   if d['mode'] == 'SVGP' and d['mll_type'] == 'PLL':
     d['mode'] = "PPGPR"
   elif d['mode'] == 'DSVGP' and d['mll_type'] == 'PLL':
     d['mode'] = "DPPGPR"
-  attrib['run'] = d['mode'] + str(d['num_directions'])
+  if "D" in d['mode']:
+    attrib['run'] = d['mode'] + str(d['num_directions'])
+  else:
+    attrib['run'] = d['mode']
   data.append(attrib)
 # make a pandas df
 df = pd.DataFrame.from_dict(data,orient='columns')
@@ -50,5 +56,6 @@ sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style=
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")
+plt.legend(loc=1)
 plt.show()
 
