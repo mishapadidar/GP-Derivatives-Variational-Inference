@@ -84,13 +84,13 @@ def plot_average(dataset, methods_list, data_type='fX', deleted_methods=None):
 
   # sort to fix color for each method
   colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22', '#17becf']
-  style_dict = {"SGD": ["Gradient Descent", "dotted", '#1f77b4'],
+  style_dict = {"SGD": ["GD", "dotted", '#1f77b4'],
                 "TURBO": ["TuRBO", "dashed", '#ff7f0e'],
                 "DSVGP1": ["TuRBO-DPPGPR1", "solid", '#2ca02c'],
                 "DSVGP2": ["TuRBO-DPPGPR2", "solid", '#d62728'],
-                "SVGP": ["TuRBO-PPGPR", "solid", '#9467bd'],
-                "BO": ["BO", "solid", '#8c564b'],
-                "random": ["Random", "solid", "#e377c2"] }
+                "SVGP": ["TuRBO-PPGPR", "dashed", '#9467bd'],
+                "BO": ["BO", "dashed", '#8c564b'],
+                "random": ["Random", "dotted", "#e377c2"] }
 
   # collect data for each method
   data_files_dict = {}
@@ -173,10 +173,10 @@ if __name__ == "__main__":
   # methods_list = ["BO", "random"]
 
   dataset="PubMed"
-  methods_list = ["random", "SGD", "TURBO", "SVGP", "DSVGP1", "DSVGP2"]
+  methods_list = ["random", "SGD", "BO", "TURBO", "SVGP", "DSVGP1", "DSVGP2"]
   
-  data_type='fX'
-  # data_type='train_acc_list'
+  # data_type='fX'
+  data_type='train_acc_list'
   plot_average(dataset, methods_list, data_type, deleted_methods=None)
 
 

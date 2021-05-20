@@ -22,3 +22,4 @@ experiments/synthetic/logs/
 experiments/GNN_bo/*.sh
 experiments/GNN_bo/*.sub
 experiments/GNN_bo/gcn_turbo_test.py
+experiments/synthetic/ablation
