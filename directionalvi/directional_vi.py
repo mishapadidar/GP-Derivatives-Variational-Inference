@@ -23,7 +23,7 @@ except:
 """
 
 class GPModel(gpytorch.models.ApproximateGP):
-    def __init__(self,inducing_points,inducing_directions,dim,**kwargs):
+    def __init__(self,inducing_points,inducing_directions,dim,learn_inducing_locations=True,**kwargs):
 
         self.num_inducing   = len(inducing_points)
         self.num_directions = int(len(inducing_directions)/self.num_inducing) # num directions per point
@@ -39,14 +39,16 @@ class GPModel(gpytorch.models.ApproximateGP):
           variational_distribution = gpytorch.variational.CholeskyVariationalDistribution(
             self.num_inducing + num_directional_derivs)
 
+        print("In DSVGP, learn_inducing_locations = ", learn_inducing_locations)
+        print("In DSVGP, inducing points = ", inducing_points)
 
         # variational strategy q(f)
         if "variational_strategy" in kwargs and kwargs["variational_strategy"] == "CIQ":
           variational_strategy = CiqDirectionalGradVariationalStrategy(self,
-            inducing_points, inducing_directions,variational_distribution, learn_inducing_locations=True)
+            inducing_points, inducing_directions,variational_distribution, learn_inducing_locations=learn_inducing_locations)
         else:
           variational_strategy = DirectionalGradVariationalStrategy(self,
-            inducing_points,inducing_directions,variational_distribution, learn_inducing_locations=True)
+            inducing_points,inducing_directions,variational_distribution, learn_inducing_locations=learn_inducing_locations)
         super(GPModel, self).__init__(variational_strategy)
 
         # set the mean and covariance
@@ -99,6 +101,7 @@ def train_gp(train_dataset,num_inducing=128,
   num_contour_quadrature=15,
   watch_model=False,gamma=0.1,
   verbose=True,
+  fixed_inducing_locations=None,
   **args):
   """Train a Derivative GP with the Directional Derivative
   Variational Inference method
@@ -152,16 +155,20 @@ def train_gp(train_dataset,num_inducing=128,
     inducing_points = inducing_points.cuda()
     inducing_directions = inducing_directions.cuda()
 
+  learn_inducing_locations=True
+  if fixed_inducing_locations != None:
+    inducing_points = fixed_inducing_locations
+    learn_inducing_locations=False
 
   # initialize model
   if use_ciq:
     #gpytorch.settings.num_contour_quadrature(num_contour_quadrature)
     gpytorch.settings.num_contour_quadrature._set_value(num_contour_quadrature)
-    model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ")
+    model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",variational_strategy="CIQ", learn_inducing_locations=learn_inducing_locations)
   elif use_ngd:
-    model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD")
+    model = GPModel(inducing_points,inducing_directions,dim, variational_distribution="NGD",learn_inducing_locations=learn_inducing_locations)
   else:
-    model = GPModel(inducing_points,inducing_directions,dim)
+    model = GPModel(inducing_points,inducing_directions,dim,learn_inducing_locations=learn_inducing_locations)
   likelihood = gpytorch.likelihoods.GaussianLikelihood()
   if torch.cuda.is_available():
     model = model.cuda()
