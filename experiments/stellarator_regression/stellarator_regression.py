@@ -71,7 +71,25 @@ if os.path.exists(data_dir) is False:
 # load a dataset
 if mode == "SVGP": gradients = False
 else: gradients = True
-dataset = csv_dataset(data_file,rescale=True,gradients=gradients)
+#dataset = csv_dataset(data_file,rescale=True,gradients=gradients)
+
+# tensor data
+d = pickle.load(open(data_file, "rb"))
+X = torch.tensor(d['X']).float()
+Y = torch.tensor(d['Y']).float()
+n,dim = X.shape
+# standardize
+lb = torch.min(X,axis=0).values
+ub = torch.max(X,axis=0).values
+mu = torch.median(Y[:,0])
+sig = torch.std(Y[:,0])
+X = (X-lb)/(ub-lb)
+Y[:,0] = (Y[:,0] - mu)/sig
+Y[:,1:] = Y[:,1:]*(ub-lb)/sig
+if gradients == False:
+  Y = Y[:,0]
+dataset = TensorDataset(X,Y)
+
 dim = len(dataset[0][0])
 n   = len(dataset)
 
