@@ -21,7 +21,7 @@ import torch.optim as optim
 from torch.distributions import constraints, transform_to
 from torch.quasirandom import SobolEngine
 
-from gp import train_gp
+# from gp import train_gp
 from turbo_utils import from_unit_cube, latin_hypercube, to_unit_cube
 
 
@@ -56,6 +56,7 @@ class myBO:
         lb,
         ub,
         n_init,
+        train_gp,
         max_evals,
         batch_size=1,
         verbose=True,
@@ -97,6 +98,7 @@ class myBO:
         self.use_ard = use_ard
         self.max_cholesky_size = max_cholesky_size
         self.n_training_steps = n_training_steps
+        self.train_gp = train_gp
 
         # Hyperparameters
         self.mean = np.zeros((0, 1))
@@ -106,7 +108,7 @@ class myBO:
 
         # Tolerances and counters
         # self.n_cand = min(100 * self.dim, 5000)
-        self.n_cand = batch_size
+        self.n_cand = batch_size+2
         self.n_evals = 0
         # self.failtol = np.ceil(np.max([4.0 / batch_size, self.dim / batch_size]))
 
@@ -152,10 +154,10 @@ class myBO:
         with gpytorch.settings.max_cholesky_size(self.max_cholesky_size):
             X_torch = torch.tensor(X).to(device=device, dtype=dtype)
             y_torch = torch.tensor(fX).to(device=device, dtype=dtype)
-            gp = train_gp(
+            gp,likelihood = self.train_gp(
                 train_x=X_torch, train_y=y_torch, use_ard=self.use_ard, num_steps=n_training_steps, hypers=hypers
             )
-
+            print("finish")
             # Save state dict
             hypers = gp.state_dict()
 
@@ -215,10 +217,10 @@ class myBO:
         # We use Lanczos for sampling if we have enough data
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(self.max_cholesky_size):
             X_cand_torch = torch.tensor(X_cand).to(device=device, dtype=dtype)
-            y_cand = gp.likelihood(gp(X_cand_torch)).sample(torch.Size([self.batch_size])).t().cpu().detach().numpy()
+            y_cand = likelihood(gp(X_cand_torch)).sample(torch.Size([self.batch_size])).t().cpu().detach().numpy()
 
         # Remove the torch variables
-        del X_torch, y_torch, X_cand_torch, gp
+        del X_torch, y_torch, X_cand_torch, gp, X_init
 
         # De-standardize the sampled values
         y_cand = mu + sigma * y_cand
@@ -275,11 +277,12 @@ class myBO:
                 # Update budget and append data
                 self.n_evals += self.batch_size
                 
-                if self.verbose:
-                    n_evals, fbest = self.n_evals, fX_next.min()
-                    print(f"n_evals: {n_evals}, New eval: {fbest:.4}")
-                    sys.stdout.flush()
-
+                
                 # Append data to the global history
                 self.X = np.vstack((self.X, deepcopy(X_next)))
-                self.fX = np.vstack((self.fX, deepcopy(fX_next)))
+                self.fX = np.vstack((self.fX, deepcopy(fX_next)))   
+                
+                if self.verbose:
+                    n_evals, fbest = self.n_evals, (self.fX).min()
+                    print(f"n_evals: {n_evals}, new eval: {fX_next}, \nCurrent best: {fbest:.4}")
+                    sys.stdout.flush()
