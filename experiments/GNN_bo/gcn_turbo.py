@@ -145,7 +145,7 @@ print("\nDimension of GCN:", dim)
 
 turbo_lb = np.repeat([-10.],dim)
 turbo_ub = np.repeat([10.],dim)
-turbo_n_init = 400
+turbo_n_init = 400 if num_inducing < 400 else num_inducing
 
 # wrap the objective
 def objective(w):
@@ -321,14 +321,30 @@ elif args["model"] == "TURBO":
     X_turbo, fX_turbo = problem.X, problem.fX.flatten()  # Evaluated points
 
 elif args["model"] == "BO":
-  assert turbo_batch_size == 1
+  # assert turbo_batch_size == 1
   print(f"\n\n---BO with  GP in dim {dim}---")
   from bo import *
+  def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
+    # expects train_x on unit cube and train_y standardized
+    # make a trainable model for TuRBO
+    train_x = train_x.float()
+    train_y = train_y.float()
+    dataset = TensorDataset(train_x,train_y)
+    model,likelihood = traditional_vi.train_gp(dataset,dim,num_inducing=num_inducing,
+                      minibatch_size=minibatch_size,num_epochs=num_steps,use_ngd=use_ngd,
+                      use_ciq=use_ciq,learning_rate_hypers=learning_rate_hypers,
+                      learning_rate_ngd=learning_rate_ngd,
+                      lr_sched=lr_sched,num_contour_quadrature=num_contour_quadrature,
+                      mll_type=mll_type,verbose=False)
+    return model.double(),likelihood.double()
+    # return model.double()
+    
   # initialize TuRBO
   problem = myBO(
         objective,
         lb=turbo_lb,ub=turbo_ub,
         n_init=turbo_n_init,
+        train_gp=train_gp_for_turbo,
         max_evals=turbo_max_evals,
         batch_size=turbo_batch_size,
         verbose=True,
