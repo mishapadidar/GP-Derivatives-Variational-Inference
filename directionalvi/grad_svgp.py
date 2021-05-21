@@ -144,10 +144,7 @@ def train_gp(train_dataset,dim,num_inducing=128,
 
             variational_optimizer.zero_grad()
             hyperparameter_optimizer.zero_grad()
-            if mll_type=="ELBO":
-                output = model(x_batch)
-            elif mll_type=="PLL": 
-                output = likelihood(model(x_batch))
+            output = likelihood(model(x_batch))
             loss = -mll(output, y_batch)
             if watch_model:
                 wandb.log({"loss": loss.item()})
@@ -196,10 +193,7 @@ def eval_gp(test_dataset,model,likelihood, mll_type="ELBO", num_inducing=128,min
             if torch.cuda.is_available():
                 x_batch = x_batch.cuda()
                 y_batch = y_batch.cuda()
-            if mll_type=="ELBO":
-                preds = model(x_batch)
-            elif mll_type=="PLL": 
-                preds = likelihood(model(x_batch))
+            preds = likelihood(model(x_batch))
             means = torch.cat([means, preds.mean.cpu()])
             variances = torch.cat([variances, preds.variance.cpu()])
     means = means[1:]
