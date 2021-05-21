@@ -345,3 +345,78 @@ class SquaredSum_with_deriv(SquaredSum):
             lb = np.array([item[0] for item in self._bounds])
             ub = np.array([item[1] for item in self._bounds])
             return lb, ub
+
+class Rosenbrock(SyntheticTestFunction):
+    r"""
+        2D function squared sum
+        f(x, y) = (y-x**2)**2 + (x-0.5)**2
+    """
+    dim = 2
+    _bounds = [(0, 1) for _ in range(dim)]
+    _optimal_value = 0.0
+    _optimizers = [(0.5, 0.5)]
+    def evaluate_true(self, X: Tensor) -> Tensor:
+        x0 = X[..., 0]*15-5
+        x1 = X[..., 1]*15-5
+        x0 = (X[..., 0]+5)/15
+        x1 = (X[..., 1]+5)/15
+        x0 = X[..., 0]*2+5
+        x1 = X[..., 1]*2+5
+        
+        fval = (x1-x0**2)**2 + x0**2
+        return fval
+
+class Rosenbrock_with_deriv(Rosenbrock):
+    def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
+        val = super().evaluate_true(X)
+        val = val.reshape(*X.shape[:-1], 1)
+        x0 = X[..., 0]*2+5
+        x1 = X[..., 1]*2+5
+        gx0 = 2.
+        gx1 = 2.
+        g1 = -4*(x1-x0**2)*x0*gx0 + 2*x0*gx0
+        g2 = 2*(x1-x0**2)*gx1
+        g1 = g1.reshape(*X.shape[:-1],1)
+        g2 = g2.reshape(*X.shape[:-1],1)
+        return torch.cat([val, g1, g2], 1) 
+
+    def get_bounds(self):
+            lb = np.array([item[0] for item in self._bounds])
+            ub = np.array([item[1] for item in self._bounds])
+            return lb, ub
+
+
+class SinCos(SyntheticTestFunction):
+    r"""
+        2D function squared sum
+        f(x, y) = sin(math.pi * x)**2 + 10*cos(math.pi*x)**2 
+    """
+    dim = 2
+    _bounds = [(0, 1) for _ in range(dim)]
+    _optimal_value = 0.0
+    _optimizers = [(0.5, 0.5)]
+    def evaluate_true(self, X: Tensor) -> Tensor:
+        x0 = X[..., 0]
+        x1 = X[..., 1]
+        # fval = torch.sin(math.pi*x0) + torch.cos(math.pi*x1)
+        fval = torch.sin(x0+x1)
+        return fval
+
+class SinCos_with_deriv(Rosenbrock):
+    def evaluate_true_with_deriv(self, X: Tensor) -> Tensor:
+        val = super().evaluate_true(X)
+        val = val.reshape(*X.shape[:-1], 1)
+        x0 = X[..., 0]
+        x1 = X[..., 1]
+        gx0 = 1.
+        gx1 = 1.
+        g1 = torch.cos(x0+x1)
+        g2 = -torch.sin(x1)
+        g1 = g1.reshape(*X.shape[:-1],1)
+        g2 = g2.reshape(*X.shape[:-1],1)
+        return torch.cat([val, g1, g2], 1) 
+
+    def get_bounds(self):
+            lb = np.array([item[0] for item in self._bounds])
+            ub = np.array([item[1] for item in self._bounds])
+            return lb, ub
