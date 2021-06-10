@@ -19,7 +19,7 @@ rc = {'figure.figsize':(10,5),
 plt.rcParams.update(rc)
 plt.figure(figsize=(10,10))
 
-num_curves = 4
+num_curves = 5
 means  = np.zeros((num_curves,2000))
 std    = np.zeros((num_curves,2000))
 n_type = np.zeros(num_curves)
@@ -41,7 +41,7 @@ for ii in range(len(data_files)):
   fX = d['fX']
   fXmin = np.minimum.accumulate(fX)
   # accumulate means
-  if d['mode'] == "DSVGP":
+  if d['mode'] == "DSVGP" and d['num_directions']==1:
     means[0] += fXmin
     std[0] += fXmin**2
     n_type[0] += 1
@@ -57,19 +57,28 @@ for ii in range(len(data_files)):
     means[3] += fXmin
     std[3] += fXmin**2
     n_type[3] += 1
+  if d['mode'] == "DSVGP" and d['num_directions']==2:
+    means[4] += fXmin
+    std[4] += fXmin**2
+    n_type[4] += 1
 
   #plt.plot(fXmin,linewidth=5,markersize=12,color=colors[ii],label=label)
 
 means = np.diag(1/n_type) @ means
 std = np.sqrt(np.diag(1/n_type)@ std - means**2)
-plt.plot(means[0],linewidth=3,markersize=12,label="TuRBO-DPPGPR1")
-plt.fill_between(np.arange(0,2000),means[0]-std[0], means[0]+std[0],alpha=0.7)
-plt.plot(means[1],linewidth=3,markersize=12,label="TuRBO")
-plt.fill_between(np.arange(0,2000),means[1]-std[1], means[1]+std[1],alpha=0.7)
-plt.plot(means[2],linewidth=3,markersize=12,label="Random Search")
-plt.fill_between(np.arange(0,2000),means[2]-std[2], means[2]+std[2],alpha=0.7)
-plt.plot(means[3],linewidth=3,markersize=12,label="BO-LCB")
-plt.fill_between(np.arange(0,2000),means[3]-std[3], means[3]+std[3],alpha=0.7)
+labels =["TuRBO-DPPGPR1","TuRBO","Random Search","BO-LCB","TuRBO-DPPGPR2"]
+for ii,label in enumerate(labels):
+  plt.plot(means[ii],linewidth=3,markersize=12,label=labels[ii])
+  plt.fill_between(np.arange(0,2000),means[ii]-std[ii], means[ii]+std[ii],alpha=0.7)
+
+print(means)
+print(std)
+print(labels)
+d = {}
+d['labels'] = labels
+d['means'] = means
+d['std'] = std
+pickle.dump(d,open("rover_plot_data.pickle","wb"))
 # plot
 #sns.set()
 #sns.set_style("whitegrid")
