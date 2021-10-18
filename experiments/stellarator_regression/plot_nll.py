@@ -26,12 +26,13 @@ for ff in data_files:
   attrib['mse'] = d['test_mse'].item()
   attrib['test_time']  = d['test_time']
   attrib['train_time'] = d['train_time']
-  attrib['run'] = d['mode']
   if d['mode'] == 'SVGP' and d['mll_type'] == 'PLL':
     d['mode'] = "PPGPR"
   elif d['mode'] == 'DSVGP' and d['mll_type'] == 'PLL':
     d['mode'] = "DPPGPR"
-  if "D" in d['mode']:
+  elif d['mode'] == 'GradSVGP' and d['mll_type'] == 'PLL':
+    d['mode'] = "GradPPGPR"
+  if "D" in d['mode'] or "Grad" in d['mode']:
     attrib['run'] = d['mode'] + str(d['num_directions'])
   else:
     attrib['run'] = d['mode']
@@ -40,6 +41,7 @@ for ff in data_files:
 df = pd.DataFrame.from_dict(data,orient='columns')
 #df = df[df['M'] > 400]
 print(df)
+pd.to_pickle(df,"./stellarator_plot_data.pickle")
 
 # plot
 rc = {'figure.figsize':(10,5),
