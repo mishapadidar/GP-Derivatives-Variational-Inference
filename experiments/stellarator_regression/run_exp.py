@@ -6,7 +6,7 @@ import numpy as np
 
 # flags
 write_sbatch =True
-submit       =False
+submit       =True
 
 dd =1
 M_list = np.array([200,500,800,1000,1200,1400])
