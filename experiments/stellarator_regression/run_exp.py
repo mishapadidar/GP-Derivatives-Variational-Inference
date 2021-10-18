@@ -6,11 +6,10 @@ import numpy as np
 
 # flags
 write_sbatch =True
-submit       =True
+submit       =False
 
 dd =1
-#M_list = np.array([200,500,800,1000,1200,1400])
-M_list = np.array([5000,6000,7000])
+M_list = np.array([200,500,800,1000,1200,1400])
 ni_list = (M_list/(dd+1)).astype(int)
 for ni in ni_list:
 
@@ -19,25 +18,26 @@ for ni in ni_list:
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['mode']                         = "DSVGP" # DSVGP, SVGP or GradSVGP
+  run_params['mode']                         = "DSVGP" # DSVGP, SVGP, GradSVGP, DSVGP-Shared
   run_params['num_inducing']                 = ni
   run_params['num_directions']               = dd
   run_params['minibatch_size']               = 512
-  run_params['num_epochs']                   = 700
+  run_params['num_epochs']                   = 1000
   run_params['tqdm']                         = False
   run_params['inducing_data_initialization'] = False
   run_params['use_ngd']                      = False 
   run_params['use_ciq']                      = False
-  run_params['num_contour_quadrature']       = 6 # gpytorch default=15
+  run_params['num_contour_quadrature']       = 15 # gpytorch default=15
   run_params['learning_rate_hypers']         = 0.01
   run_params['learning_rate_ngd']            = 0.1
   # lr_benchmarks has units number of steps not number of epochs
-  run_params['lr_benchmarks']                = 45*np.array([350,600])
+  run_params['lr_benchmarks']                = 45*np.array([600,800])
   run_params['lr_gamma']                     = 0.1
-  run_params['lr_sched']                     = None
-  run_params['mll_type']                     = "PLL"
-  run_params['data_file'] = "./focus_w7x_dataset_155dim.csv"
-  #run_params['data_file'] = f"./synthetic1_dataset_10000_points_5_dim_grad_dimredux_{run_params['num_directions']}_directions.pickle"
+  run_params['lr_sched']                     = "MultiStepLR"
+  run_params['mll_type']                     = "PLL" #ELBO or PLL
+  run_params['data_file'] = "focus_w7x_dataset_45dim_pickle_format.pickle"
+  #run_params['data_file'] = "focus_w7x_dataset_45dim_500000_points.pickle"
+  #run_params['data_file'] = f"./focus_w7x_dataset_45dim_grad_dimredux_{run_params['num_directions']}_directions.pickle"
   # seed and date
   now     = datetime.now()
   seed    = int("%d%.2d%.2d%.2d%.2d"%(now.month,now.day,now.hour,now.minute,now.second))
@@ -47,6 +47,10 @@ for ni in ni_list:
   # file name
   if run_params['mode'] == "DSVGP":
     base_name = f"stell_regress_DSVGP_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
+              f"_ne_{run_params['num_epochs']}_ngd_{run_params['use_ngd']}"+\
+              f"_ciq_{run_params['use_ciq']}_{barcode}"
+  elif run_params['mode'] == "DSVGP-Shared":
+    base_name = f"stell_regress_DSVGP_Shared_ni_{run_params['num_inducing']}_nd_{run_params['num_directions']}"+\
               f"_ne_{run_params['num_epochs']}_ngd_{run_params['use_ngd']}"+\
               f"_ciq_{run_params['use_ciq']}_{barcode}"
   elif run_params['mode'] == "SVGP":
