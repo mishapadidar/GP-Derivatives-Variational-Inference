@@ -10,6 +10,7 @@ import sys
 import pickle
 from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
+sys.path.append("../synthetic1")
 sys.path.append("../../")
 sys.path.append("../../directionalvi/utils")
 sys.path.append("../../directionalvi")
@@ -21,6 +22,7 @@ import traditional_vi
 from load_data import *
 from metrics import *
 from synthetic_functions import *
+import ExactGradGP
 try: # import wandb if watch model on weights&biases
   import wandb
 except:
@@ -50,6 +52,7 @@ def compute_optimal_subspace_projection(G,X,k):
   return G,X, (VT.T[:,:k])
 
 def main(**args):
+    print(args)
     torch.set_default_dtype(torch.float64)
     torch.random.manual_seed(args["seed"])
     dataset_type = args["dataset"].split('-')[0]
@@ -73,6 +76,7 @@ def main(**args):
         lr_sched = lambda epoch: 1.0/(1 + epoch)
     elif lr_sched == "None":
         lr_sched = None
+    args["device"]='cpu'
         
     exp_name = args["exp_name"]
     if args["model"]=="SVGP":
@@ -81,6 +85,9 @@ def main(**args):
     elif args["model"]=="DSVGP" or args["model"]=="GradSVGP":
         args["derivative"]=True
         expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_{variational_dist}_{variational_strat}_exp{exp_name}_{mll_type}"
+    elif args["model"]=="ExactGradGP":
+        args["derivative"]=True
+        expname_train = f"{dataset_name}_{args['model']}_ntrain{n}_epochs{num_epochs}_exp{exp_name}"
     expname_test = f"{expname_train}_ntest{n_test}"
 
     if args["watch_model"]: # watch model on weights&biases
@@ -101,14 +108,18 @@ def main(**args):
     if dataset_type=="synthetic":
         testfun = eval(f"{dataset_name}_with_deriv")()
         dim = testfun.dim
+        n = int(n/(dim+1)) if args["model"]=="ExactGradGP" else n
         x, y, info_dict = load_synthetic_data(testfun, n+n_test, **args)
         train_x = x[:n, :]
         test_x = x[n:, :]
         train_y = y[:n, ...]
         test_y = y[n:, ...]
+        saved_data = {'X_train': train_x, 'X_test': test_x,
+                      'fX_train': train_y, 'fX_test': test_y}
+        pickle.dump(saved_data,open(f'./temp_data_{dataset_name}.pkl',"wb"))
         #obtain train and test TensorDatasets
-        if torch.cuda.is_available():
-            train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
+        # if torch.cuda.is_available():
+        #     train_x, train_y, test_x, test_y = train_x.cuda(), train_y.cuda(), test_x.cuda(), test_y.cuda()
     else: #load real dataset
         #obtain train and test TensorDatasets
         data_loader = eval(f"load_{dataset_name}")
@@ -120,7 +131,7 @@ def main(**args):
         
     assert num_inducing < n
     assert num_directions <= dim
-    assert minibatch_size <= n
+    # assert minibatch_size <= n
 
     # active subspace for GradSVGP
     if args["model"]=="GradSVGP" and num_directions < dim:
@@ -185,6 +196,15 @@ def main(**args):
                                             lr_sched=lr_sched, mll_type=mll_type,
                                             num_contour_quadrature = num_contour_quadrature,
                                             watch_model=args["watch_model"],gamma=args["gamma"], verbose=True)
+    elif args["model"]=="ExactGradGP":
+        # model,likelihood = ExactGradGP.train_gp(train_x,train_y,
+        #                                         num_epochs=num_epochs,
+        #                                         lr_sched=lr_sched,
+        #                                         watch_model=args["watch_model"],
+        #                                         verbose=True)
+        model,likelihood = ExactGradGP.train_gp(train_x,train_y,
+                                                num_epochs=num_epochs,
+                                                verbose=True)
 
     if torch.cuda.is_available():
         end.record()
@@ -226,7 +246,12 @@ def main(**args):
         pred_means = means[::num_directions+1]
         pred_variance = variances[::num_directions+1]
         test_f = test_y[:,0]
-    
+    elif args["model"]=="ExactGradGP":
+        # means,variances = ExactGradGP.eval_gp(test_dataset,model,likelihood,minibatch_size=minibatch_size)
+        means,variances = ExactGradGP.eval_gp(test_x,model,likelihood)
+        pred_means = means.cpu()[:,0] # just function values
+        pred_variance= variances.cpu()[:,0] # just function values
+        test_f = test_y[:,0] # just function values
     # metrics
     test_mse = MSE(test_f.cpu(),pred_means)
     test_rmse = RMSE(test_f.cpu(),pred_means)
