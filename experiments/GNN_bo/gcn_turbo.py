@@ -154,6 +154,7 @@ def objective(w):
   model.update_weights(torch.tensor(w, device=turbo_device))
   # predict
   output = model(data) 
+  model.zero_grad()
   # compute the loss
   loss = F.nll_loss(output[data.train_mask], data.y[data.train_mask])
   if args["derivative"]==True:
