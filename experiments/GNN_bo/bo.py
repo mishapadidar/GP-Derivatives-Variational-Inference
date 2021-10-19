@@ -26,7 +26,7 @@ from turbo_utils import from_unit_cube, latin_hypercube, to_unit_cube
 
 
 class myBO:
-    """The TuRBO-1 algorithm.
+    """a BO-UCB algorithm.
 
     Parameters
     ----------
