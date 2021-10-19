@@ -182,7 +182,7 @@ if args["model"] == "DSVGP":
   print("\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-  
+  gp_eval_batch_size = 1000
   def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
     # expects train_x on unit cube and train_y standardized
     # make a trainable model for TuRBO
@@ -221,15 +221,29 @@ if args["model"] == "DSVGP":
     X_cand = X_cand.float()
     
     n,dim = X_cand.shape
+    eval_y = torch.rand(n, dim+1)
+    test_dataset = TensorDataset(X_cand, eval_y)
+    test_loader = DataLoader(test_dataset, batch_size=gp_eval_batch_size, shuffle=False)
     kwargs = {}
-    derivative_directions = torch.eye(dim)[:model.num_directions]
-    derivative_directions = derivative_directions.repeat(n,1)
-    kwargs['derivative_directions'] = derivative_directions.to(X_cand.device).float()
-    preds  = likelihood(model(X_cand,**kwargs))
+    means = torch.tensor([0.])
+    with torch.no_grad():
+      for x_batch, _ in test_loader:
+        if torch.cuda.is_available():
+          x_batch = x_batch.cuda()
+      derivative_directions = torch.eye(dim)[:model.num_directions]
+      derivative_directions = derivative_directions.repeat(n,1)
+      kwargs['derivative_directions'] = derivative_directions.to(X_cand.device).float()
+      preds  = likelihood(model(X_cand,**kwargs))
+      if torch.cuda.is_available():
+        means = torch.cat([means, preds.mean.detach().cpu()])
+      else:
+        means = torch.cat([means, preds.mean])
     #y_cand = preds.sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
     #y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
+    
+    means = means[1:]
     # only use mean
-    y_cand = preds.mean[::model.num_directions+1].repeat(n_samples,1).t() # (n,n_samples)
+    y_cand = means[::model.num_directions+1].repeat(n_samples,1).t() # (n,n_samples)
 
     ## only use distribution of f(x) to predict (dont use joint covariance with derivatives)
     #mean  = preds.mean[::num_directions+1]
