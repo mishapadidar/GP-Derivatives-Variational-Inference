@@ -62,6 +62,7 @@ elif lr_sched == "LambdaLR":
 torch.random.manual_seed(seed)
 
 # output file names
+#data_dir = "./output/shared_directions/"
 data_dir = "./output/"
 model_filename = data_dir + "model_" + base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
@@ -130,6 +131,47 @@ if mode == "DSVGP":
   
   # test
   means, variances = eval_gp(test_dataset,model,likelihood,
+                              num_directions=num_directions,
+                              minibatch_size=minibatch_size,
+                              minibatch_dim=num_directions)
+  t3 = time.time()	
+  test_time = t3 - t2
+
+  # only keep the function values
+  means = means[::num_directions+1]
+  variances = variances[::num_directions+1]
+
+elif mode == "DSVGP-Shared":
+  import shared_directional_vi
+  # train
+  print("\n\n---SharedDirectionalGradVGP---")
+  print(f"Start training with {n} trainig data of dim {dim}")
+  print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+  t1 = time.time()	
+  model,likelihood = shared_directional_vi.train_gp(train_dataset,
+                        num_inducing=num_inducing,
+                        num_directions=num_directions,
+                        minibatch_size = minibatch_size,
+                        minibatch_dim = num_directions,
+                        num_epochs =num_epochs, 
+                        learning_rate_hypers=learning_rate_hypers,
+                        learning_rate_ngd=learning_rate_ngd,
+                        inducing_data_initialization=inducing_data_initialization,
+                        use_ngd = use_ngd,
+                        use_ciq = use_ciq,
+                        lr_sched=lr_sched,
+                        mll_type=mll_type,
+                        num_contour_quadrature=num_contour_quadrature,
+                        tqdm=tqdm,
+                        )
+  t2 = time.time()	
+  train_time = t2 - t1
+  
+  # save the model
+  torch.save(model.state_dict(),model_filename)
+  
+  # test
+  means, variances = shared_directional_vi.eval_gp(test_dataset,model,likelihood,
                               num_directions=num_directions,
                               minibatch_size=minibatch_size,
                               minibatch_dim=num_directions)

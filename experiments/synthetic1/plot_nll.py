@@ -15,6 +15,17 @@ for ff in data_files:
   # load
   d = pickle.load(open(ff, "rb"))  
   attrib['mode']= d['mode']
+  if d['mode'] == "ExactGradGP":
+    attrib['mode'] = d['mode']
+    attrib['run']  = d['mode']
+    attrib['M']   = d['M']
+    attrib['nll'] = d['test_nll'].item()
+    attrib['rmse'] = np.sqrt(d['test_mse'].item())
+    print(f"ExactGradGP nll: {d['test_nll'].item()}, rmse: {np.sqrt(d['test_mse'].item())}")
+    # dont plot ExactGradGP
+    # data.append(attrib)
+    continue
+
   attrib['ni']  = d['num_inducing']
   if d['mode'] == 'SVGP':
     d['num_directions']= 0
@@ -37,15 +48,16 @@ for ff in data_files:
 
   # reduce points
   #if not np.any(np.isclose(attrib['M'],[800],atol=10)):
+  #  continue
   if not np.any(np.isclose(attrib['M'],[200,400,800,1200],atol=10)):
     continue
   # reduce methods
-  if not attrib['run'] in ['SVGP','PPGPR','GradSVGP5','GradPPGPR5','DSVGP2','DPPGPR2','DSKI']:
+  if not attrib['run'] in ['SVGP','PPGPR','GradSVGP5','GradPPGPR5','DSVGP2','DPPGPR2','DSKI','ExactGradGP']:
     continue
   data.append(attrib)
 # make a pandas df
 df = pd.DataFrame.from_dict(data,orient='columns')
-#df.to_pickle("~/Downloads/research_pics/GP_variational_inference/synthetic1.pickle")
+pd.to_pickle(df,"sin5_plot_data.pickle")
 #df = df[df['run']!='GradSVGP3']
 print(df)
 
@@ -57,8 +69,8 @@ rc = {'figure.figsize':(10,5),
       'font.family':'Times New Roman',
       'font.size' : 15}
 plt.rcParams.update(rc)
-sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
-#sns.lineplot(x='M',y='rmse',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
+#sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
+sns.lineplot(x='M',y='rmse',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")
