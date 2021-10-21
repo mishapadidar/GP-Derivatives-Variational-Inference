@@ -19,7 +19,7 @@ rc = {'figure.figsize':(10,5),
 plt.rcParams.update(rc)
 plt.figure(figsize=(10,10))
 
-num_curves = 5
+num_curves = 6
 means  = np.zeros((num_curves,2000))
 std    = np.zeros((num_curves,2000))
 n_type = np.zeros(num_curves)
@@ -61,12 +61,16 @@ for ii in range(len(data_files)):
     means[4] += fXmin
     std[4] += fXmin**2
     n_type[4] += 1
+  if d['mode'] == "DSVGP" and d['num_directions']==3:
+    means[5] += fXmin
+    std[5] += fXmin**2
+    n_type[5] += 1
 
   #plt.plot(fXmin,linewidth=5,markersize=12,color=colors[ii],label=label)
 
 means = np.diag(1/n_type) @ means
 std = np.sqrt(np.diag(1/n_type)@ std - means**2)
-labels =["TuRBO-DPPGPR1","TuRBO","Random Search","BO-LCB","TuRBO-DPPGPR2"]
+labels =["TuRBO-DPPGPR1","TuRBO","Random Search","BO-LCB","TuRBO-DPPGPR2","TuRBO-DPPGPR3"]
 for ii,label in enumerate(labels):
   plt.plot(means[ii],linewidth=3,markersize=12,label=labels[ii])
   plt.fill_between(np.arange(0,2000),means[ii]-std[ii], means[ii]+std[ii],alpha=0.7)
