@@ -23,3 +23,12 @@ experiments/GNN_bo/*.sh
 experiments/GNN_bo/*.sub
 experiments/GNN_bo/gcn_turbo_test.py
 experiments/synthetic/ablation
+experiments/plot/synthetic/data
+experiments/plot/synthetic/exp_res
+experiments/plot/synthetic/plots
+experiments/synthetic/outputs
+experiments/rover/plots/
+experiments/stellarator_regression/plots/
+experiments/stellarator_regression/data/
+experiments/rover/data/
+experiments/synthetic/ExactGradGP-run.py

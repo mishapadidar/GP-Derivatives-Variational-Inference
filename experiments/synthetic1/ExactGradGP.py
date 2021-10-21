@@ -23,6 +23,9 @@ def train_gp(train_x,train_y,num_epochs=1,lr_hypers=0.01,verbose=True):
   likelihood = gpytorch.likelihoods.MultitaskGaussianLikelihood(num_tasks=n_tasks)  # Value + x-derivative + y-derivative
   model = GPModelWithDerivatives(train_x, train_y, likelihood)
   
+  # if torch.cuda.is_available():
+  #   model = model.cuda()
+  #   likelihood = likelihood.cuda()
   # Find optimal model hyperparameters
   model.train()
   likelihood.train()
