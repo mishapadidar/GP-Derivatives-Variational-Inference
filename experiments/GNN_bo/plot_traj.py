@@ -1,3 +1,4 @@
+from sys import meta_path
 import matplotlib.pyplot as plt
 import matplotlib.pylab as pl
 # import seaborn as sns
@@ -7,6 +8,7 @@ import numpy as np
 import glob
 import os
 
+ADD_SHARED=True
 FONTSIZE=25
 MARKERSIZE=20
 FIGURESUZE=(10,7)
@@ -14,13 +16,27 @@ ALPHA=0.2
 LINEWIDTH=5
 PADDING=0.1
 
-style_dict = {"SGD": ["GD", "dotted", '#2ca02c'],
-                "TURBO": ["TuRBO", "dashed", '#ff7f0e'],
-                "DSVGP1": ["TuRBO-DPPGPR1", "solid", '#1f77b4'],
-                "DSVGP2": ["TuRBO-DPPGPR2", "solid", '#d62728'],
-                "SVGP": ["TuRBO-PPGPR", "dashed", '#9467bd'],
-                "BO": ["BO", "dashed", '#8c564b'],
-                "random": ["Random", "dotted", "#e377c2"] }
+if ADD_SHARED:
+  style_dict = {"SGD": ["GD", "dotted", '#2ca02c'],
+                  "TURBO": ["TuRBO", "dashed", '#ff7f0e'],
+                  "DSVGP1": ["TuRBO-DPPGPR1", "solid", '#1f77b4'],
+                  "DSVGP2": ["TuRBO-DPPGPR2", "solid", '#d62728'],
+                  "DSVGP3": ["TuRBO-DPPGPR3", "solid", '#e377c2'],
+                  "DSVGP_shared1": ["TuRBO-DPPGPR-Shared1", "dotted", '#1f77b4'],
+                  "DSVGP_shared2": ["TuRBO-DPPGPR-Shared2", "dotted", '#d62728'],
+                  "DSVGP_shared3": ["TuRBO-DPPGPR-Shared3", "dotted", '#e377c2'],
+                  "SVGP": ["TuRBO-PPGPR", "dashed", '#9467bd'],
+                  "BO": ["BO", "dashed", '#8c564b'],
+                  "random": ["Random", "dotted", "#7f7f7f"] }
+else:
+  style_dict = {"SGD": ["GD", "dotted", '#2ca02c'],
+                  "TURBO": ["TuRBO", "dashed", '#ff7f0e'],
+                  "DSVGP1": ["TuRBO-DPPGPR1", "solid", '#1f77b4'],
+                  "DSVGP2": ["TuRBO-DPPGPR2", "solid", '#d62728'],
+                  "DSVGP3": ["TuRBO-DPPGPR3", "solid", '#e377c2'],
+                  "SVGP": ["TuRBO-PPGPR", "dashed", '#9467bd'],
+                  "BO": ["BO", "dashed", '#8c564b'],
+                  "random": ["Random", "dotted", "#7f7f7f"] }
 
 
 def plot_average(style_dict, dataset, methods_list, data_type='fX', deleted_methods=None):
@@ -39,14 +55,14 @@ def plot_average(style_dict, dataset, methods_list, data_type='fX', deleted_meth
     for ii in range(len(data_files_dict[method])):
       ff = data_files_dict[method][ii]
       d = pickle.load(open(ff, "rb"))
-    
       if method == "TURBO" or method == "SVGP":
         assert d['model'] == method
-      elif method == "DSVGP1":
-        assert d['model'] == "DSVGP" and d['num_directions'] == 1
-      elif method == "DSVGP2":
-        assert d['model'] == "DSVGP" and d['num_directions'] == 2
-
+      elif method == "DSVGP1" or method == "DSVGP_shared1":
+        assert d['model'].startswith("DSVGP") and d['num_directions'] == 1
+      elif method == "DSVGP2" or method == "DSVGP_shared2":
+        assert d['model'].startswith("DSVGP") and d['num_directions'] == 2
+      elif method == "DSVGP3" or method == "DSVGP_shared3":
+        assert d['model'].startswith("DSVGP") and d['num_directions'] == 3
 
       fX = d[data_type]
       fXmin = np.minimum.accumulate(fX) if data_type == 'fX' else np.maximum.accumulate(fX)
@@ -83,8 +99,6 @@ def plot_average(style_dict, dataset, methods_list, data_type='fX', deleted_meth
   if data_type == 'fX':
     ylabel = 'Training loss'
     plt.ylim( (0.65e-2,1.35e2) )
-    if dataset=="squared":
-      plt.ylim((0.005,10.))
     plt.yscale("log")
   elif data_type == 'test_acc_list':
     ylabel = 'Test accuracy'
@@ -103,21 +117,28 @@ def plot_average(style_dict, dataset, methods_list, data_type='fX', deleted_meth
   plt.grid()
   # plt.legend(bbox_to_anchor=(1.04,1), loc="upper left")
 
-  figurename = f"aTuRBO_{dataset}_{data_type}.pdf"
+  if ADD_SHARED:
+    figurename = f"TuRBO_{dataset}_{data_type}_add_shared.pdf"
+  else:
+    figurename = f"TuRBO_{dataset}_{data_type}.pdf"
   figurepath = os.path.abspath(__file__ + "/../plots/" + figurename)
   fig.savefig(figurepath, bbox_inches = 'tight', pad_inches = PADDING)
   print("Figure saved:", figurepath)
 
-def plot_legend(style_dict, dataset, methods_list, data_type, deleted_methods=None):
+def plot_legend(style_dict, dataset, methods_list):
   plt.clf()
   plt.cla()
 
-  figurename = f"aTuRBO_{dataset}_legend.pdf"
+  if ADD_SHARED:
+    figurename = f"TuRBO_{dataset}_legend_add_shared.pdf"
+  else:
+    figurename = f"TuRBO_{dataset}_legend.pdf"
   figurepath = os.path.abspath(__file__ + "/../plots/" + figurename)
   
   color_set = [style_dict[method][2] for method in methods_list]
   linestyle_set = [style_dict[method][1] for method in methods_list]
   label_set = [style_dict[method][0] for method in methods_list]
+  ncol = len(style_dict)//2
 
   fig, ax = plt.subplots(figsize=(10,8))
   f = lambda ls,c,label: ax.plot([],[], linewidth=LINEWIDTH+1, linestyle=ls, color=c, label=label)[0]
@@ -132,7 +153,7 @@ def plot_legend(style_dict, dataset, methods_list, data_type, deleted_methods=No
   ax_leg.set_facecolor('white')
   ax_leg.grid(False)
   ax_leg.set_axis_off()
-  ax_leg.legend(*ax.get_legend_handles_labels(), loc='center', ncol=7, prop=legend_properties, facecolor="white", edgecolor="grey")
+  ax_leg.legend(*ax.get_legend_handles_labels(), loc='center', ncol=ncol, prop=legend_properties, facecolor="white", edgecolor="grey")
   fig_leg.savefig(figurepath, bbox_inches = 'tight')
 
   print("Figure saved:", figurepath)
@@ -143,12 +164,18 @@ if __name__ == "__main__":
   # methods_list = ["BO", "random"]
 
   dataset="PubMed"
-  methods_list = ["random", "SGD", "BO", "TURBO", "SVGP", "DSVGP1", "DSVGP2"]
+  if ADD_SHARED:
+    methods_list = ["random", "SGD", "BO", "TURBO", "SVGP", 
+                    "DSVGP1", "DSVGP2", "DSVGP3",
+                    "DSVGP_shared1", "DSVGP_shared2", "DSVGP_shared3"]
+  else:
+    methods_list = ["random", "SGD", "BO", "TURBO", "SVGP", 
+                    "DSVGP1", "DSVGP2", "DSVGP3"]
   
   data_type='fX'
   # data_type='train_acc_list'
   plot_average(style_dict, dataset, methods_list, data_type, deleted_methods=None)
-  # plot_legend(style_dict, dataset, methods_list, data_type, deleted_methods=None)
+  plot_legend(style_dict, dataset, methods_list)
 
 
 
