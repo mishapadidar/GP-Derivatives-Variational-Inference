@@ -32,6 +32,8 @@ for ff in data_files:
     d['mode'] = "DPPGPR"
   elif d['mode'] == 'GradSVGP' and d['mll_type'] == 'PLL':
     d['mode'] = "GradPPGPR"
+  elif d['mode'] == 'DSVGP-Shared' and d['mll_type'] == 'PLL':
+    d['mode'] = "DPPGPR-Shared"
   if "D" in d['mode'] or "Grad" in d['mode']:
     attrib['run'] = d['mode'] + str(d['num_directions'])
   else:

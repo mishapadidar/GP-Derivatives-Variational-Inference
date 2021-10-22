@@ -51,13 +51,13 @@ for ff in data_files:
   #  continue
   if not np.any(np.isclose(attrib['M'],[200,400,800,1200],atol=10)):
     continue
-  # reduce methods
+  ## reduce methods
   if not attrib['run'] in ['SVGP','PPGPR','GradSVGP5','GradPPGPR5','DSVGP2','DPPGPR2','DSKI','ExactGradGP']:
     continue
   data.append(attrib)
 # make a pandas df
 df = pd.DataFrame.from_dict(data,orient='columns')
-pd.to_pickle(df,"sin5_plot_data.pickle")
+#pd.to_pickle(df,"sin5_plot_data.pickle")
 #df = df[df['run']!='GradSVGP3']
 print(df)
 
@@ -69,8 +69,8 @@ rc = {'figure.figsize':(10,5),
       'font.family':'Times New Roman',
       'font.size' : 15}
 plt.rcParams.update(rc)
-#sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
-sns.lineplot(x='M',y='rmse',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
+sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
+#sns.lineplot(x='M',y='rmse',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")

@@ -253,7 +253,7 @@ elif mode == "GradSVGP":
 # collect the test function values
 test_f = torch.zeros(n_test)
 for ii in range(n_test):
-  if mode == "DSVGP" or mode == "GradSVGP":
+  if mode == "DSVGP" or mode == "GradSVGP" or mode == "DSVGP-Shared":
     test_f[ii] = test_dataset[ii][1][0] # function value
   elif mode == "SVGP":
     test_f[ii] = test_dataset[ii][1] # function value

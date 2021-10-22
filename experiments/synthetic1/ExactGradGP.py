@@ -2,6 +2,7 @@ import torch
 import gpytorch
 import math
 import numpy as np
+import sys
 
 class GPModelWithDerivatives(gpytorch.models.ExactGP):
     def __init__(self, train_x, train_y, likelihood):
@@ -15,7 +16,7 @@ class GPModelWithDerivatives(gpytorch.models.ExactGP):
         covar_x = self.covar_module(x)
         return gpytorch.distributions.MultitaskMultivariateNormal(mean_x, covar_x)
 
-def train_gp(train_x,train_y,num_epochs=1,verbose=True):
+def train_gp(train_x,train_y,num_epochs=1,lr_hypers=0.01,verbose=True):
 
   dim = train_x.shape[-1]
   n_tasks = dim + 1
@@ -30,7 +31,7 @@ def train_gp(train_x,train_y,num_epochs=1,verbose=True):
   likelihood.train()
   
   # Use the adam optimizer
-  optimizer = torch.optim.Adam(model.parameters(), lr=0.01)  # Includes GaussianLikelihood parameters
+  optimizer = torch.optim.Adam(model.parameters(), lr=lr_hypers)  # Includes GaussianLikelihood parameters
   
   # "Loss" for GPs - the marginal log likelihood
   mll = gpytorch.mlls.ExactMarginalLogLikelihood(likelihood, model)
@@ -41,6 +42,7 @@ def train_gp(train_x,train_y,num_epochs=1,verbose=True):
       loss = -mll(output, train_y)
       loss.backward()
       print(f"Iter {i}, Loss: {loss.item()}")
+      sys.stdout.flush()
       optimizer.step()
 
   print("Done Training")
@@ -77,7 +79,6 @@ if __name__ == "__main__":
   n,dim = X.shape
   n_train = int(0.8*n) 
   n_test  = n - n_train
-  n_train =n_test = 100
   # reduce n_train
   n_train = int(n_train/(dim+1))
   # train/test split
@@ -88,7 +89,8 @@ if __name__ == "__main__":
   test_f = test_y[:,0] # just function values
   # train gp
   num_epochs = 400
-  model,likelihood = train_gp(train_x,train_y,num_epochs=num_epochs,verbose=True)
+  lr_hypers = 0.05
+  model,likelihood = train_gp(train_x,train_y,num_epochs=num_epochs,lr_hypers=lr_hypers,verbose=True)
   # eval gp
   means,variances = eval_gp(test_x,model,likelihood)
   means = means[:,0] # just function values
@@ -108,6 +110,8 @@ if __name__ == "__main__":
   outdata['mode']       = "ExactGradGP"
   outdata['dim']        = dim
   outdata['M']          = n_train
+  outdata['num_epochs'] = num_epochs
+  outdata['lr_hypers'] = lr_hypers
   data_filename
   pickle.dump(outdata,open(data_filename,"wb"))
   print(f"Dropped file: {data_filename}")
