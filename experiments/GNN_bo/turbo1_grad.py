@@ -62,7 +62,7 @@ class Turbo1Grad:
         n_training_steps=50,
         min_cuda=1024,
         device="cpu",
-        dtype="float64",
+        dtype="float32",
     ):
 
         # Very basic input checks
@@ -127,6 +127,7 @@ class Turbo1Grad:
         # Device and dtype for GPyTorch
         self.min_cuda = min_cuda
         self.dtype = torch.float32 if dtype == "float32" else torch.float64
+        torch.set_default_dtype(self.dtype)
         self.device = torch.device("cuda") if device == "cuda" else torch.device("cpu")
         if self.verbose:
             print("Using dtype = %s \nUsing device = %s" % (self.dtype, self.device))
@@ -157,7 +158,7 @@ class Turbo1Grad:
             self.length /= 2.0
             self.failcount = 0
 
-    def _create_candidates(self, X, fX, length, n_training_steps, hypers):
+    def _create_candidates(self, X, fX, length, n_training_steps):
         """Generate candidates assuming X has been scaled to [0,1]^d."""
         # Pick the center as the point with the smallest function values
         # NOTE: This may not be robust to noise, in which case the posterior mean of the GP can be used instead
@@ -182,11 +183,11 @@ class Turbo1Grad:
             X_torch = torch.tensor(X).to(device=device, dtype=dtype)
             y_torch = torch.tensor(fX).to(device=device, dtype=dtype)
             gp,likelihood = self.train_gp(
-                train_x=X_torch, train_y=y_torch, use_ard=self.use_ard, num_steps=n_training_steps, hypers=hypers
+                train_x=X_torch, train_y=y_torch, num_steps=n_training_steps
             )
 
             # Save state dict
-            hypers = gp.state_dict()
+            # hypers = gp.state_dict()
 
         # Create the trust region boundaries
         x_center = X[fX[:, 0].argmin().item(), :][None, :]
@@ -223,7 +224,8 @@ class Turbo1Grad:
 
         # We use Lanczos for sampling if we have enough data
         with torch.no_grad(), gpytorch.settings.max_cholesky_size(self.max_cholesky_size):
-            X_cand_torch = torch.tensor(X_cand).to(device=device, dtype=dtype)
+            # X_cand_torch = torch.tensor(X_cand).to(device=device, dtype=dtype)
+            X_cand_torch = torch.tensor(X_cand).to(dtype=dtype)
             # predict function values (self.n_cand, self.batch_size)
             y_cand = self.sample_from_gp(gp,likelihood,X_cand_torch,self.batch_size).cpu().detach().numpy()
 
@@ -340,7 +342,7 @@ class Turbo1Grad:
 
                 # Create th next batch
                 X_cand, y_cand, x_center = self._create_candidates(
-                    X, fX, length=self.length, n_training_steps=self.n_training_steps, hypers={}
+                    X, fX, length=self.length, n_training_steps=self.n_training_steps
                 )
                 X_next,y_next = self._select_candidates(X_cand, y_cand)
                 # make sure we have model improvement points
