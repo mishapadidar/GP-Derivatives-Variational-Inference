@@ -21,6 +21,7 @@ sys.path.append("../../directionalvi/utils")
 sys.path.append("../../directionalvi")
 import directional_vi 
 import traditional_vi
+import shared_directional_vi
 import grad_svgp
 from metrics import MSE
 import pickle
@@ -97,7 +98,7 @@ if args["model"]=="SVGP":
 elif args["model"]=="TURBO" or args["model"]=="BO":
   args["derivative"]=False
   expname_train = f"{args['dataset']}_{args['model']}_m{num_inducing}_epochs{num_epochs}_turboN{turbo_max_evals}_turbo_bs{turbo_batch_size}_exp{exp_name}"
-elif args["model"]=="DSVGP" or args["model"]=="GradSVGP":
+elif args["model"]=="DSVGP" or args["model"]=="GradSVGP" or args["model"]=="DSVGP_shared":
   args["derivative"]=True
   expname_train = f"{args['dataset']}_{args['model']}_m{num_inducing}_p{num_directions}_epochs{num_epochs}_turboN{turbo_max_evals}_turbo_bs{turbo_batch_size}_exp{exp_name}"
 elif args["model"]=="random":
@@ -183,7 +184,7 @@ if args["model"] == "DSVGP":
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
   gp_eval_batch_size = 1000
-  def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
+  def train_gp_for_turbo(train_x, train_y, num_steps):
     # expects train_x on unit cube and train_y standardized
     # make a trainable model for TuRBO
     train_x = train_x.float()
@@ -225,31 +226,36 @@ if args["model"] == "DSVGP":
     test_dataset = TensorDataset(X_cand, eval_y)
     test_loader = DataLoader(test_dataset, batch_size=gp_eval_batch_size, shuffle=False)
     kwargs = {}
-    means = torch.tensor([0.])
+    # means = torch.tensor([0.])
+    samples = torch.empty(n_samples, 0)
     with torch.no_grad():
       for x_batch, _ in test_loader:
         if torch.cuda.is_available():
           x_batch = x_batch.cuda()
-      derivative_directions = torch.eye(dim)[:model.num_directions]
-      derivative_directions = derivative_directions.repeat(n,1)
-      kwargs['derivative_directions'] = derivative_directions.to(X_cand.device).float()
-      preds  = likelihood(model(X_cand,**kwargs))
-      if torch.cuda.is_available():
-        means = torch.cat([means, preds.mean.detach().cpu()])
-      else:
-        means = torch.cat([means, preds.mean])
+        derivative_directions = torch.eye(dim)[:model.num_directions]
+        derivative_directions = derivative_directions.repeat(x_batch.shape[0],1)
+        kwargs['derivative_directions'] = derivative_directions.to(x_batch.device).float()
+        preds  = likelihood(model(x_batch,**kwargs))
+        samples_cur = preds.sample(torch.Size([n_samples]))[:, ::model.num_directions+1] # shape (n_samples x (dim+1)) 
+        # print("samples_cur.shape", samples_cur.shape)
+        if torch.cuda.is_available():
+          # means = torch.cat([means, preds.mean.detach().cpu()])
+          samples = torch.hstack([samples, samples_cur.detach().cpu()])
+          # print("samples.shape = ", samples.shape)
+        else:
+          # means = torch.cat([means, preds.mean])
+          samples = torch.hstack([samples, samples_cur])
+          # print("samples.shape = ", samples.shape)
+
     #y_cand = preds.sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
     #y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
     
-    means = means[1:]
+    # means = means[1:]
     # only use mean
-    y_cand = means[::model.num_directions+1].repeat(n_samples,1).t() # (n,n_samples)
-
+    # y_cand = means[::model.num_directions+1].repeat(n_samples,1).t() # (n,n_samples)
+  
     ## only use distribution of f(x) to predict (dont use joint covariance with derivatives)
-    #mean  = preds.mean[::num_directions+1]
-    #var  = preds.variance[::num_directions+1] # could have used covariance for f(x) too
-    #mvn  = gpytorch.distributions.MultivariateNormal(mean,torch.diag(var))
-    #y_cand = mvn.sample(torch.Size([n_samples])).t() # shape (n x n_samples)
+    y_cand = samples.t()
 
     return y_cand
 
@@ -270,6 +276,108 @@ if args["model"] == "DSVGP":
         min_cuda=0, # directional_vi.py always runs on cuda if available
         device=turbo_device,
         dtype="float64")
+  # optimize
+  problem.optimize()
+  X_turbo, fX_turbo = problem.X, problem.fX[:,0] # Evaluated points
+
+elif args["model"] == "DSVGP_shared":
+  # train
+  print("\n\n---TuRBO-Grad with DSVGP_shared in dim {dim}---")
+  print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
+
+  gp_eval_batch_size = 1000
+  def train_gp_for_turbo(train_x, train_y, num_steps):
+    # expects train_x on unit cube and train_y standardized
+    # make a trainable model for TuRBO
+    train_x = train_x.float()
+    train_y = train_y.float()
+    dataset = TensorDataset(train_x,train_y)
+    model,likelihood = shared_directional_vi.train_gp(dataset,
+                        num_inducing=num_inducing,
+                        num_directions=num_directions,
+                        minibatch_size = minibatch_size,
+                        minibatch_dim = num_directions,
+                        num_epochs =num_steps, 
+                        learning_rate_hypers=learning_rate_hypers,
+                        learning_rate_ngd=learning_rate_ngd,
+                        inducing_data_initialization=False,
+                        use_ngd = use_ngd,
+                        use_ciq = use_ciq,
+                        lr_sched=lr_sched,
+                        mll_type=mll_type,
+                        num_contour_quadrature=num_contour_quadrature,
+                        verbose=True,
+                        )
+    return model.float(),likelihood.float()
+
+  def sample_from_gp(model,likelihood,X_cand,n_samples):
+    """
+    X_cand: 2d torch tensor, points to sample at
+    n_samples: int, number of samples to take per point in X_cand
+    """
+    model.eval()
+    likelihood.eval()
+
+    # ensure correct type
+    model = model.float()
+    likelihood = likelihood.float()
+    X_cand = X_cand.float()
+    
+    n,dim = X_cand.shape
+    eval_y = torch.rand(n, dim+1)
+    test_dataset = TensorDataset(X_cand, eval_y)
+    test_loader = DataLoader(test_dataset, batch_size=gp_eval_batch_size, shuffle=False)
+    kwargs = {}
+    # means = torch.tensor([0.])
+    samples = torch.empty(n_samples, 0)
+    with torch.no_grad():
+      for x_batch, _ in test_loader:
+        if torch.cuda.is_available():
+          x_batch = x_batch.cuda()
+        derivative_directions = torch.eye(dim)[:model.num_directions]
+        derivative_directions = derivative_directions.repeat(x_batch.shape[0],1)
+        kwargs['derivative_directions'] = derivative_directions.to(x_batch.device).float()
+        preds  = likelihood(model(x_batch,**kwargs))
+        samples_cur = preds.sample(torch.Size([n_samples]))[:, ::model.num_directions+1] # shape (n_samples x (dim+1)) 
+        # print("samples_cur.shape", samples_cur.shape)
+        if torch.cuda.is_available():
+          # means = torch.cat([means, preds.mean.detach().cpu()])
+          samples = torch.hstack([samples, samples_cur.detach().cpu()])
+          # print("samples.shape = ", samples.shape)
+        else:
+          # means = torch.cat([means, preds.mean])
+          samples = torch.hstack([samples, samples_cur])
+          # print("samples.shape = ", samples.shape)
+
+    #y_cand = preds.sample(torch.Size([n_samples])) # shape (n_samples x n*(n_dir+1))
+    #y_cand = y_cand[:,::model.num_directions+1].t() # shape (n, n_samples)
+    
+    # means = means[1:]
+    # only use mean
+    # y_cand = means[::model.num_directions+1].repeat(n_samples,1).t() # (n,n_samples)
+  
+    ## only use distribution of f(x) to predict (dont use joint covariance with derivatives)
+    y_cand = samples.t()
+
+    return y_cand
+
+  from turbo1_grad import *
+  # initialize TuRBO
+  problem = Turbo1Grad(
+        objective,
+        lb=turbo_lb,ub=turbo_ub,
+        n_init=turbo_n_init,
+        max_evals=turbo_max_evals,
+        train_gp=train_gp_for_turbo,
+        sample_from_gp=sample_from_gp,
+        batch_size=turbo_batch_size,
+        verbose=True,
+        use_ard=True,
+        max_cholesky_size=2000,
+        n_training_steps=num_epochs,
+        min_cuda=0, # directional_vi.py always runs on cuda if available
+        device=turbo_device,
+        dtype="float32")
   # optimize
   problem.optimize()
   X_turbo, fX_turbo = problem.X, problem.fX[:,0] # Evaluated points
