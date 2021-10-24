@@ -1,0 +1,104 @@
+wandb: Currently logged in as: jimmypotato (use `wandb login --relogin` to force relogin)
+wandb: Tracking run with wandb version 0.10.25
+wandb: Syncing run StyblinskiTang_SVGP_ntrain1000_m300_epochs30_standard_standard_expTEST_ntest1000
+wandb:  View project at https://wandb.ai/jimmypotato/DSVGP
+wandb:  View run at https://wandb.ai/jimmypotato/DSVGP/runs/k6z1i5z8
+wandb: Run data is saved locally in C:\Users\Leo Huang\Desktop\GP-Derivatives-Variational-Inference\experiments\wandb\run-20210409_160531-k6z1i5z8
+wandb: Run `wandb offline` to turn off syncing.
+
+Experiment settings:
+{'log_dir': './logs/', 'data_dir': './data/', 'save_model': False, 'watch_model': True, 'save_results': True, 'exp_name': 'TEST', 'dataset': 'synthetic-StyblinskiTang', 'model': 'SVGP', 'variational_strategy': 'standard', 'variational_distribution': 'standard', 'n_train': 1000, 'n_test': 1000, 'num_inducing': 300, 'num_directions': 2, 'num_epochs': 30, 'batch_size': 50, 'lr': 0.01, 'lr_ngd': 0.1, 'num_contour_quad': 15, 'lr_sched': 'step_lr', 'seed': 0, 'derivative': False}
+
+
+
+Start Experiment: StyblinskiTang_SVGP_ntrain1000_m300_epochs30_standard_standard_expTEST_ntest1000
+
+---Traditional SVGP---
+Variational distribution: standard, Variational strategy: standard
+Start training with 1000 trainig data of dim 2
+VI setups: 300 inducing points
+Epoch: 0; Step: 0, loss: 2.539027582417719
+Epoch: 0; Step: 10, loss: 2.358640969194486
+Epoch: 1; Step: 0, loss: 1.9931974090627165
+Epoch: 1; Step: 10, loss: 2.1606606265721586
+Epoch: 2; Step: 0, loss: 2.204403686574245
+Epoch: 2; Step: 10, loss: 1.7636628536967622
+Epoch: 3; Step: 0, loss: 1.8049531573762996
+Epoch: 3; Step: 10, loss: 1.8115140253823803
+Epoch: 4; Step: 0, loss: 1.7652034658115554
+Epoch: 4; Step: 10, loss: 1.6760357508884693
+Epoch: 5; Step: 0, loss: 1.9781897570628786
+Epoch: 5; Step: 10, loss: 1.7749991974030268
+Epoch: 6; Step: 0, loss: 1.7322069278591714
+Epoch: 6; Step: 10, loss: 1.5590933871945902
+Epoch: 7; Step: 0, loss: 1.8277766711658052
+Epoch: 7; Step: 10, loss: 1.6790537237156573
+Epoch: 8; Step: 0, loss: 1.4517465652577233
+Epoch: 8; Step: 10, loss: 1.6679620978531586
+Epoch: 9; Step: 0, loss: 1.3735645340246339
+Epoch: 9; Step: 10, loss: 1.418249763967456
+Epoch: 10; Step: 0, loss: 1.455538221593251
+Epoch: 10; Step: 10, loss: 1.3642495117402638
+Epoch: 11; Step: 0, loss: 1.2793270627044857
+Epoch: 11; Step: 10, loss: 1.321963049098385
+Epoch: 12; Step: 0, loss: 1.4903100805254759
+Epoch: 12; Step: 10, loss: 1.2683191376267258
+Epoch: 13; Step: 0, loss: 1.287513687153098
+Epoch: 13; Step: 10, loss: 1.2379109370781984
+Epoch: 14; Step: 0, loss: 1.2693356096137787
+Epoch: 14; Step: 10, loss: 1.2053802821127142
+Epoch: 15; Step: 0, loss: 1.2409135388347183
+Epoch: 15; Step: 10, loss: 1.371733015411925
+Epoch: 16; Step: 0, loss: 1.2035538288457421
+Epoch: 16; Step: 10, loss: 1.2428373823270322
+Epoch: 17; Step: 0, loss: 1.2137020225615338
+Epoch: 17; Step: 10, loss: 1.1643776860224577
+Epoch: 18; Step: 0, loss: 1.273325876817893
+Epoch: 18; Step: 10, loss: 1.140175301028612
+Epoch: 19; Step: 0, loss: 1.1510059659044691
+Epoch: 19; Step: 10, loss: 1.1998070953477515
+Epoch: 20; Step: 0, loss: 1.1885420016336619
+Epoch: 20; Step: 10, loss: 1.2433011377941938
+Epoch: 21; Step: 0, loss: 1.1591602586407603
+Epoch: 21; Step: 10, loss: 1.1829171591123717
+Epoch: 22; Step: 0, loss: 1.1202043428543647
+Epoch: 22; Step: 10, loss: 1.1253327871168706
+Epoch: 23; Step: 0, loss: 1.2151279149302345
+Epoch: 23; Step: 10, loss: 1.1599226825699411
+Epoch: 24; Step: 0, loss: 1.1155458595165695
+Epoch: 24; Step: 10, loss: 1.131917005234055
+Epoch: 25; Step: 0, loss: 1.132253121058041
+Epoch: 25; Step: 10, loss: 1.115598346096279
+Epoch: 26; Step: 0, loss: 1.2552672576563162
+Epoch: 26; Step: 10, loss: 1.1016708479191126
+Epoch: 27; Step: 0, loss: 1.1289095226925492
+Epoch: 27; Step: 10, loss: 1.1073120520672608
+Epoch: 28; Step: 0, loss: 1.1610362002197967
+Epoch: 28; Step: 10, loss: 1.132085430960017
+Epoch: 29; Step: 0, loss: 1.1689561910254644
+Epoch: 29; Step: 10, loss: 1.2238950994407032
+Done! loss: 1.1304302912902957
+
+Done Training!
+At 1000 testing points, MSE: 5.2174e-02, RMSE: 2.2842e-01, MAE: 1.3925e-01, nll: 5.3572e-01.
+Training time: 159.06 sec, testing time: 0.84 sec
+Traceback (most recent call last):
+  File "exp_script.py", line 249, in <module>
+    main(**vars(args))
+  File "exp_script.py", line 207, in main
+    pickle.dump(summary,open(f"./postprocess/exp_res/{expname_test}.pkl","wb"))
+FileNotFoundError: [Errno 2] No such file or directory: './postprocess/exp_res/StyblinskiTang_SVGP_ntrain1000_m300_epochs30_standard_standard_expTEST_ntest1000.pkl'
+
+wandb: Waiting for W&B process to finish, PID 26188
+wandb: Program failed with code 1.  Press ctrl-c to abort syncing.
+wandb: - 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: \ 0.00MB of 0.00MB uploaded (0.00MB deduped)wandb: | 0.00MB of 0.01MB uploaded (0.00MB deduped)wandb: / 0.01MB of 0.01MB uploaded (0.00MB deduped)wandb: - 0.01MB of 0.01MB uploaded (0.00MB deduped)wandb: \ 0.01MB of 0.01MB uploaded (0.00MB deduped)wandb: | 0.01MB of 0.01MB uploaded (0.00MB deduped)wandb:                                                                                
+wandb: Find user logs for this run at: C:\Users\Leo Huang\Desktop\GP-Derivatives-Variational-Inference\experiments\wandb\run-20210409_160531-k6z1i5z8\logs\debug.log
+wandb: Find internal logs for this run at: C:\Users\Leo Huang\Desktop\GP-Derivatives-Variational-Inference\experiments\wandb\run-20210409_160531-k6z1i5z8\logs\debug-internal.log
+wandb: Run summary:
+wandb:         loss 1.13043
+wandb:     _runtime 163
+wandb:   _timestamp 1617998894
+wandb:        _step 599
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: 
+wandb: Synced StyblinskiTang_SVGP_ntrain1000_m300_epochs30_standard_standard_expTEST_ntest1000: https://wandb.ai/jimmypotato/DSVGP/runs/k6z1i5z8
