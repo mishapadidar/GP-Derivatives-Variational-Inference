@@ -1,10 +1,7 @@
-import math
 import numpy as np
 import torch
 import gpytorch
-import random
 import time
-from matplotlib import pyplot as plt
 from torch.utils.data import TensorDataset, DataLoader
 import os
 import sys
@@ -13,12 +10,8 @@ sys.path.append("../../directionalvi/utils")
 sys.path.append("../../directionalvi")
 import directional_vi 
 import traditional_vi
-import grad_svgp
-from csv_dataset import csv_dataset
-from metrics import MSE
 import pickle
-from scipy.io import loadmat
-from NeuralNetwork import NeuralNetwork
+
 
 
 # load a pickle with the run params
@@ -48,8 +41,7 @@ turbo_ub =  run_params['turbo_ub']
 turbo_n_init =  run_params['turbo_n_init']
 turbo_max_evals = run_params['turbo_max_evals']
 turbo_batch_size =   run_params['turbo_batch_size']
-data_file = run_params['data_file']
-n_hidden_layers = run_params['n_hidden_layers']
+dim = run_params['dim']
 
 # make the learning rate schedule
 assert lr_sched in [None, "MultiStepLR", "LambdaLR"], "Not a valid choice of lr_sched"
@@ -73,51 +65,20 @@ data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
 
-if mode == "DSVGP" or mode == "GradSVGP": deriv=True
-elif mode == "SVGP": deriv = False
-
-# load data
-ff = loadmat(data_file)
-X_data = torch.tensor(ff['data'][:,:-1])
-y_data = torch.tensor(ff['data'][:,-1])
-dim_data = X_data.shape[1]
-
-# standardize data
-lb = torch.min(X_data,axis=0)[0]
-ub = torch.max(X_data,axis=0)[0]
-X_data = (X_data - lb)/(ub-lb)
-med = torch.median(y_data)
-std = torch.std(y_data)
-y_data = (y_data - med)/std
-
-# initialize a neural network
-my_nn = NeuralNetwork(n_hidden_layers,dim_data)
-dim = my_nn.n_params
+if mode == "DSVGP": deriv=True
+elif mode == "SVGP" or mode == "Vanilla": deriv = False
 
 # wrap the objective
-def myObj(w):
-  # set the weights
-  my_nn.update_weights(torch.tensor(w))
-  # training mode to track grad
-  my_nn.train()
-  # predict
-  preds = my_nn(X_data)
-  # compute the loss
-  mse_loss = torch.nn.MSELoss()
-  output = mse_loss(preds.flatten(),y_data)
+from rover import *
+def myObj(u):
   if deriv==True:
-    # accumulate grad
-    output.backward()
-    # get the grad
-    grad = my_nn.get_grad()
     # stack it
-    fg = np.zeros(len(w)+1)
-    fg[0] = output.item()
-    fg[1:] = np.copy(grad.detach().numpy())
-    my_nn.zero_grad() # zero the gradients for next time
+    fg = np.zeros(len(u)+1)
+    fg[0] = rover_obj(u)
+    fg[1:] = np.copy(rover_grad(u))
     return fg
   else:
-    return output.item()
+    return rover_obj(u)
 
 if torch.cuda.is_available():
   turbo_device = 'cuda'
@@ -129,8 +90,8 @@ if mode == "DSVGP":
   print(f"\n\n---TuRBO-Grad with DSVGP in dim {dim}---")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
 
-  from turbo1_grad_linesearch import *
-  #from turbo1_grad import *
+  #from turbo1_grad_linesearch import *
+  from turbo1_grad import *
   def train_gp_for_turbo(train_x, train_y, use_ard, num_steps, hypers):
     # expects train_x on unit cube and train_y standardized
     # make a trainable model for TuRBO
@@ -248,41 +209,31 @@ elif mode == "SVGP":
   problem.optimize()
   X_turbo, fX_turbo = problem.X, problem.fX.flatten()  # Evaluated points
   
-
-elif mode == "GradSVGP":
+elif mode == "Vanilla":
   # train
-  print("\n\n---Grad SVGP---")
-  print(f"Start training with {n} training data of dim {dim}")
-  print(f"VI setup: {num_inducing} inducing points, {num_directions} inducing directions")
-  t1 = time.time()	
-  model,likelihood = grad_svgp.train_gp(train_dataset,dim,
-                                            num_inducing=num_inducing,
-                                            minibatch_size=minibatch_size,
-                                            num_epochs=num_epochs,
-                                            use_ngd=use_ngd,
-                                            use_ciq=use_ciq,
-                                            learning_rate_hypers=learning_rate_hypers,
-                                            learning_rate_ngd=learning_rate_ngd,
-                                            lr_sched=lr_sched,
-                                            num_contour_quadrature=num_contour_quadrature,
-                                            mll_type=mll_type,
-                                            tqdm=False)
-  t2 = time.time()	
-  train_time = t2 - t1
-  
-  # save the model
-  torch.save(model.state_dict(),model_filename)
-  
-  # test
-  means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
-                                            num_inducing=num_inducing,
-                                            minibatch_size=n_test)
-  t3 = time.time()	
-  test_time = t3 - t2
+  print(f"\n\n---Vanilla TuRBO in dim {dim}---")
 
-  # only keep the function values
-  means = means[::dim+1]
-  variances = variances[::dim+1]
+  from turbo1_vanilla import *
+
+  # initialize TuRBO
+  problem = Turbo1(
+        myObj,
+        lb=turbo_lb,ub=turbo_ub,
+        n_init=turbo_n_init,
+        max_evals=turbo_max_evals,
+        batch_size=turbo_batch_size,
+        verbose=True,
+        use_ard=True,
+        max_cholesky_size=2000,
+        n_training_steps=num_epochs,
+        min_cuda=0,
+        device=turbo_device,
+        dtype="float64")
+
+  # optimize
+  problem.optimize()
+  X_turbo, fX_turbo = problem.X, problem.fX.flatten()  # Evaluated points
+
   
 
 # get the optimum

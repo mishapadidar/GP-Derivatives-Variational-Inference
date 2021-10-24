@@ -1,0 +1,31 @@
+#!/bin/bash
+#SBATCH -J  basic                 # Job name
+#SBATCH -o ../../slurm_output/job_%j.out    # Name of stdout output file(%j expands to jobId)
+#SBATCH -e ../../slurm_output/job_%j.err    # Name of stderr output file(%j expands to jobId)
+#SBATCH --get-user-env                     # Tells sbatch to retrieve the users login environment
+#SBATCH -N 1                               # Total number of nodes requested
+#SBATCH -n 16                               # Total number of cores requested
+#SBATCH --mem=32G                        # Total amount of (real) memory requested (per node)
+#SBATCH -t 168:00:00                       # Time limit (hh:mm:ss)
+#SBATCH --partition=default_partition      # Request partition for resource 
+##SBATCH --exclude=marschner-compute01      # Request partition for resource 
+#SBATCH --exclude=joachims-compute-01,sablab-gpu-11
+#SBATCH --gres=gpu:1                       # Specify a list of generic consumable resources (per node)
+
+
+. /home/xz584/anaconda3/etc/profile.d/conda.sh
+conda activate DSVGP2
+
+# exp setups
+dataset="PubMed"
+# watch_model=True
+exp_name=${1}
+seed=${2}
+turbo_max_evals=${3}
+# find runlogs in logs folder
+python3 -u gcn_sgd.py --dataset ${dataset} --exp_name ${exp_name} --seed ${seed} \
+                       --turbo_max_evals ${turbo_max_evals} \
+                       2>&1 | tee runlogs/a.out_${dataset}_SGD_epoch${turbo_max_evals}_exp${exp_name}
+
+
+

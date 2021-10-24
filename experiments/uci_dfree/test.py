@@ -1,8 +1,8 @@
 import math
 import numpy as np
+from scipy.io import loadmat
 import torch
 import gpytorch
-import tqdm
 import random
 import time
 from matplotlib import pyplot as plt
@@ -12,15 +12,12 @@ import sys
 sys.path.append("../")
 sys.path.append("../../directionalvi/utils")
 sys.path.append("../../directionalvi")
-from directional_vi import train_gp, eval_gp
+import dfree_directional_vi 
 import traditional_vi
-import grad_svgp
 from csv_dataset import csv_dataset
 from metrics import MSE
 import pickle
 
-#torch.set_default_dtype(torch.float64) 
-#gpytorch.settings.max_cg_iterations._set_value(2000)
 
 # load a pickle with the run params
 args = sys.argv
@@ -30,7 +27,7 @@ num_inducing   =run_params['num_inducing']
 num_directions =run_params['num_directions'] 
 minibatch_size =run_params['minibatch_size'] 
 num_epochs     =run_params['num_epochs']
-tqdm           =run_params['tqdm']
+verbose        =run_params['verbose']
 inducing_data_initialization =run_params['inducing_data_initialization'] 
 use_ngd =run_params['use_ngd']
 use_ciq =run_params['use_ciq']
@@ -53,52 +50,50 @@ if lr_sched is None:
 elif lr_sched == "MultiStepLR":
   def lr_sched(epoch):
     a = np.sum(lr_benchmarks < epoch)
-    # lr_gamma should be in (0,1)
+    # lr_gamma should be > 1
     return (lr_gamma)**a
 elif lr_sched == "LambdaLR":
-  lr_sched = lambda epoch: 1./(1+lr_gamma*np.sqrt(epoch))
+  lr_sched = lambda epoch: 1./(1+lr_gamma*epoch)
 
 # set the seed
 torch.random.manual_seed(seed)
 
 # output file names
-#data_dir = "./output/shared_directions/"
 data_dir = "./output/"
-model_filename = data_dir + "model_" + base_name + ".model"
+model_filename = data_dir + "model_"+ base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
   os.mkdir(data_dir)
 
-# load a dataset
-if mode == "SVGP": gradients = False
-else: gradients = True
-#dataset = csv_dataset(data_file,rescale=True,gradients=gradients)
+# load data
+ff = loadmat(data_file)
+X_data = torch.tensor(ff['data'][:,:-1]) # @Leo double check this is right
+y_data = torch.tensor(ff['data'][:,-1]) # @Leo double check this is right
+n, dim = X_data.shape
 
-# tensor data
-d = pickle.load(open(data_file, "rb"))
-X = torch.tensor(d['X']).float()
-Y = torch.tensor(d['Y']).float()
-n,dim = X.shape
-# standardize
-lb = torch.min(X,axis=0).values
-ub = torch.max(X,axis=0).values
-mu = torch.median(Y[:,0])
-sig = torch.std(Y[:,0])
-X = (X-lb)/(ub-lb)
-Y[:,0] = (Y[:,0] - mu)/sig
-Y[:,1:] = Y[:,1:]*(ub-lb)/sig
-if gradients == False:
-  Y = Y[:,0]
-dataset = TensorDataset(X,Y)
+# make sure right type
+X_data =X_data.float()
+y_data =y_data.float()
 
-dim = len(dataset[0][0])
-n   = len(dataset)
+# standardize data
+lb = torch.min(X_data,axis=0)[0]
+ub = torch.max(X_data,axis=0)[0]
+X_data = (X_data - lb)/(ub-lb)
+med = torch.median(y_data)
+std = torch.std(y_data)
+y_data = (y_data - med)/std
+
+# make a torch dataset
+dataset = TensorDataset(X_data,y_data)
 
 # train-test split
 n_train = int(0.8*n)
-n_test  = int(0.2*n)
-
+n_test  = n - n_train
 train_dataset,test_dataset = torch.utils.data.random_split(dataset,[n_train,n_test])
+
+# make dataloaders
+train_loader  = DataLoader(train_dataset, batch_size=minibatch_size, shuffle=True)
+test_loader   = DataLoader(test_dataset, batch_size=n_test, shuffle=False)
 
 
 if mode == "DSVGP":
@@ -107,7 +102,7 @@ if mode == "DSVGP":
   print(f"Start training with {n} trainig data of dim {dim}")
   print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
   t1 = time.time()	
-  model,likelihood = train_gp(train_dataset,
+  model,likelihood = dfree_directional_vi.train_gp(train_dataset,
                         num_inducing=num_inducing,
                         num_directions=num_directions,
                         minibatch_size = minibatch_size,
@@ -121,7 +116,7 @@ if mode == "DSVGP":
                         lr_sched=lr_sched,
                         mll_type=mll_type,
                         num_contour_quadrature=num_contour_quadrature,
-                        tqdm=tqdm,
+                        verbose=verbose,
                         )
   t2 = time.time()	
   train_time = t2 - t1
@@ -130,57 +125,12 @@ if mode == "DSVGP":
   torch.save(model.state_dict(),model_filename)
   
   # test
-  means, variances = eval_gp(test_dataset,model,likelihood,
+  means, variances = dfree_directional_vi.eval_gp(test_dataset,model,likelihood,
                               num_directions=num_directions,
                               minibatch_size=minibatch_size,
                               minibatch_dim=num_directions)
   t3 = time.time()	
   test_time = t3 - t2
-
-  # only keep the function values
-  means = means[::num_directions+1]
-  variances = variances[::num_directions+1]
-
-elif mode == "DSVGP-Shared":
-  import shared_directional_vi
-  # train
-  print("\n\n---SharedDirectionalGradVGP---")
-  print(f"Start training with {n} trainig data of dim {dim}")
-  print(f"VI setups: {num_inducing} inducing points, {num_directions} inducing directions")
-  t1 = time.time()	
-  model,likelihood = shared_directional_vi.train_gp(train_dataset,
-                        num_inducing=num_inducing,
-                        num_directions=num_directions,
-                        minibatch_size = minibatch_size,
-                        minibatch_dim = num_directions,
-                        num_epochs =num_epochs, 
-                        learning_rate_hypers=learning_rate_hypers,
-                        learning_rate_ngd=learning_rate_ngd,
-                        inducing_data_initialization=inducing_data_initialization,
-                        use_ngd = use_ngd,
-                        use_ciq = use_ciq,
-                        lr_sched=lr_sched,
-                        mll_type=mll_type,
-                        num_contour_quadrature=num_contour_quadrature,
-                        tqdm=tqdm,
-                        )
-  t2 = time.time()	
-  train_time = t2 - t1
-  
-  # save the model
-  torch.save(model.state_dict(),model_filename)
-  
-  # test
-  means, variances = shared_directional_vi.eval_gp(test_dataset,model,likelihood,
-                              num_directions=num_directions,
-                              minibatch_size=minibatch_size,
-                              minibatch_dim=num_directions)
-  t3 = time.time()	
-  test_time = t3 - t2
-
-  # only keep the function values
-  means = means[::num_directions+1]
-  variances = variances[::num_directions+1]
 
 elif mode == "SVGP":
   # train
@@ -197,9 +147,9 @@ elif mode == "SVGP":
                                             learning_rate_hypers=learning_rate_hypers,
                                             learning_rate_ngd=learning_rate_ngd,
                                             lr_sched=lr_sched,
-                                            mll_type=mll_type,
                                             num_contour_quadrature=num_contour_quadrature,
-                                            tqdm=False)
+                                            mll_type=mll_type,
+                                            verbose=verbose)
   t2 = time.time()	
   train_time = t2 - t1
   
@@ -213,49 +163,10 @@ elif mode == "SVGP":
   t3 = time.time()	
   test_time = t3 - t2
 
-elif mode == "GradSVGP":
-  # train
-  print("\n\n---Grad SVGP---")
-  print(f"Start training with {n} training data of dim {dim}")
-  print(f"VI setup: {num_inducing} inducing points, {num_directions} inducing directions")
-  t1 = time.time()	
-  model,likelihood = grad_svgp.train_gp(train_dataset,dim,
-                                            num_inducing=num_inducing,
-                                            minibatch_size=minibatch_size,
-                                            num_epochs=num_epochs,
-                                            use_ngd=use_ngd,
-                                            use_ciq=use_ciq,
-                                            learning_rate_hypers=learning_rate_hypers,
-                                            learning_rate_ngd=learning_rate_ngd,
-                                            lr_sched=lr_sched,
-                                            num_contour_quadrature=num_contour_quadrature,
-                                            mll_type=mll_type,
-                                            tqdm=False)
-  t2 = time.time()	
-  train_time = t2 - t1
-  
-  # save the model
-  torch.save(model.state_dict(),model_filename)
-  
-  # test
-  means, variances = grad_svgp.eval_gp(test_dataset,model,likelihood,
-                                            num_inducing=num_inducing,
-                                            minibatch_size=n_test)
-  t3 = time.time()	
-  test_time = t3 - t2
-
-  # only keep the function values
-  means = means[::dim+1]
-  variances = variances[::dim+1]
-  
-  
 
 # collect the test function values
 test_f = torch.zeros(n_test)
 for ii in range(n_test):
-  if mode == "DSVGP" or mode == "GradSVGP" or mode == "DSVGP-Shared":
-    test_f[ii] = test_dataset[ii][1][0] # function value
-  elif mode == "SVGP":
     test_f[ii] = test_dataset[ii][1] # function value
 
 # compute MSE
@@ -274,3 +185,4 @@ outdata['test_time']  = test_time
 # add the run params
 outdata.update(run_params)
 pickle.dump(outdata,open(data_filename,"wb"))
+print(f"Dropped file: {data_filename}")

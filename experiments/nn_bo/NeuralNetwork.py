@@ -12,7 +12,8 @@ class NeuralNetwork(nn.Module):
         seq =[]
         for ii in range(n_hidden_layers):
             seq.append(nn.Linear(layer_height,layer_height,bias=False))
-            seq.append(nn.ReLU())
+            #seq.append(nn.ReLU())
+            seq.append(nn.Sigmoid())
         seq.append(nn.Linear(layer_height,1,bias=False))
         # make a stack
         self.lin_relu_stack = nn.Sequential(*seq)
@@ -27,6 +28,7 @@ class NeuralNetwork(nn.Module):
         """
         method to update the weights of the nn
         """
+        assert len(weights) == self.n_params
         # dont track update in grad
         self.eval()
 
@@ -50,6 +52,12 @@ class NeuralNetwork(nn.Module):
             # counter
             used_params +=param_size
 
+    def zero_grad(self):
+        """zero out the grads. 
+           Call this before next prediction,loss, grad computation"""
+        for param in self.parameters():
+            param.grad.data.zero_()
+
     def get_grad(self):
         grads = []
         for param in self.parameters():
@@ -59,12 +67,15 @@ class NeuralNetwork(nn.Module):
         return grads
 
 
+
+
 if __name__ == "__main__":
-  dim = 4
-  n_hidden_layers = 2
+  dim = 18
+  n_hidden_layers = 3
   n_layers = n_hidden_layers+1
   random_data = torch.rand(dim)
   my_nn = NeuralNetwork(n_hidden_layers,dim)
+  print(my_nn.n_params)
   my_nn.train()
   result = my_nn(random_data)
   print(result)

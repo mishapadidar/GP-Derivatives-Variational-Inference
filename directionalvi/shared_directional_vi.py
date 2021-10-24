@@ -10,7 +10,7 @@ import sys
 sys.path.append("utils")
 
 from RBFKernelDirectionalGrad import RBFKernelDirectionalGrad #.RBFKernelDirectionalGrad
-from DirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
+from SharedDirectionalGradVariationalStrategy import DirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 from CiqDirectionalGradVariationalStrategy import CiqDirectionalGradVariationalStrategy #.DirectionalGradVariationalStrategy
 from utils.count_params import count_params
 try: # import wandb if watch model on weights&biases
@@ -24,10 +24,12 @@ except:
 
 class GPModel(gpytorch.models.ApproximateGP):
     def __init__(self,inducing_points,inducing_directions,dim,learn_inducing_locations=True,**kwargs):
-
         self.num_inducing   = len(inducing_points)
-        self.num_directions = int(len(inducing_directions)/self.num_inducing) # num directions per point
-        num_directional_derivs = self.num_directions*self.num_inducing
+        #self.num_directions = int(len(inducing_directions)/self.num_inducing) # num directions per point
+        #num_directional_derivs = self.num_directions*self.num_inducing
+
+        self.num_directions = len(inducing_directions) # num directions per point
+        num_directional_derivs = self.num_directions
 
         # variational distribution q(u,g)
         # variational_distribution = gpytorch.variational.DeltaVariationalDistribution(
@@ -150,7 +152,7 @@ def train_gp(train_dataset,num_inducing=128,
     #inducing_directions = torch.rand(num_inducing*num_directions,dim)
     #inducing_directions = (inducing_directions.T/torch.norm(inducing_directions,dim=1)).T
     inducing_directions = torch.eye(dim)[:num_directions] # canonical directions
-    inducing_directions = inducing_directions.repeat(num_inducing,1)
+    #inducing_directions = inducing_directions.repeat(num_inducing,1)
   if torch.cuda.is_available():
     inducing_points = inducing_points.cuda()
     inducing_directions = inducing_directions.cuda()
