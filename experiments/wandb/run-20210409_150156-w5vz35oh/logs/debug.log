@@ -1,0 +1,23 @@
+2021-04-09 15:01:56,834 INFO    MainThread:16948 [wandb_setup.py:_flush():69] setting env: {}
+2021-04-09 15:01:56,835 INFO    MainThread:16948 [wandb_setup.py:_flush():69] setting login settings: {}
+2021-04-09 15:01:56,835 INFO    MainThread:16948 [wandb_init.py:_log_setup():336] Logging user logs to C:\Users\Leo Huang\Desktop\GP-Derivatives-Variational-Inference\experiments\wandb\run-20210409_150156-w5vz35oh\logs\debug.log
+2021-04-09 15:01:56,835 INFO    MainThread:16948 [wandb_init.py:_log_setup():337] Logging internal logs to C:\Users\Leo Huang\Desktop\GP-Derivatives-Variational-Inference\experiments\wandb\run-20210409_150156-w5vz35oh\logs\debug-internal.log
+2021-04-09 15:01:56,835 INFO    MainThread:16948 [wandb_init.py:init():369] calling init triggers
+2021-04-09 15:01:56,835 INFO    MainThread:16948 [wandb_init.py:init():376] wandb.init called with sweep_config: {}
+config: {}
+2021-04-09 15:01:56,835 INFO    MainThread:16948 [wandb_init.py:init():418] starting backend
+2021-04-09 15:01:56,836 INFO    MainThread:16948 [backend.py:_multiprocessing_setup():71] multiprocessing start_methods=spawn, using: spawn
+2021-04-09 15:01:56,840 INFO    MainThread:16948 [backend.py:ensure_launched():123] starting backend process...
+2021-04-09 15:01:56,909 INFO    MainThread:16948 [backend.py:ensure_launched():128] started backend process with pid: 6392
+2021-04-09 15:01:56,910 INFO    MainThread:16948 [wandb_init.py:init():423] backend started and connected
+2021-04-09 15:01:56,910 INFO    MainThread:16948 [wandb_init.py:init():463] updated telemetry
+2021-04-09 15:01:56,911 INFO    MainThread:16948 [wandb_init.py:init():482] communicating current version
+2021-04-09 15:01:58,042 INFO    MainThread:16948 [wandb_init.py:init():487] got version response 
+2021-04-09 15:01:58,042 INFO    MainThread:16948 [wandb_init.py:init():495] communicating run to backend with 30 second timeout
+2021-04-09 15:02:28,054 INFO    MainThread:16948 [interface.py:_communicate_run():642] couldn't get run from backend
+2021-04-09 15:02:28,054 ERROR   MainThread:16948 [wandb_init.py:init():499] backend process timed out
+2021-04-09 15:02:28,054 ERROR   MainThread:16948 [wandb_init.py:init():508] encountered error: Error communicating with wandb process
+try: wandb.init(settings=wandb.Settings(start_method='fork'))
+or:  wandb.init(settings=wandb.Settings(start_method='thread'))
+For more info see: https://docs.wandb.ai/library/init#init-start-error
+2021-04-09 15:02:33,352 INFO    MainThread:16948 [wandb_init.py:teardown():187] tearing down wandb.init
