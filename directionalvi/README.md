@@ -1,3 +1,4 @@
+## Main Methods for Variational GP computions
 This directory contains the main components of the methods for a variational GP with directional derivatives, as well as GPs with derivatives.
 Much of this functionality is, or soon will be, incorporated into GPyTorch.
 
