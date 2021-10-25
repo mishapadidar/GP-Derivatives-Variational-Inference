@@ -11,3 +11,4 @@ The directory structure is as follows:
 - `tests` contains basic tests showing how to use the methods.
 -  `experiments` contains code for the experiments run in the paper, including the graph convolutional network, stellarator regression, rover, bunny, and UCI experiments. For experimental data please contact the authors.
 
+For a basic introduction on how to use the methods from the paper visit the `tests` directory.
