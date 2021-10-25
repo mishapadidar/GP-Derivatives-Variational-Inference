@@ -8,23 +8,34 @@ import numpy as np
 write_sbatch =True
 submit       =True
 
-dd = 0 # number of directions (use 0 for SVGP)
-M_list = np.array([200]) # matrix sizes
-ni_list = (M_list/(dd+1)).astype(int) # ensures equal inducing matrix size
-for ni in ni_list:
+model = ['DSVGP','DSVGP','SVGP','SVGP']
+mll   = ['PLL','ELBO','PLL','ELBO']
+dd = np.array([1,1,0,0]) # number of directions (use 0 for SVGP)
+M = 800 # inducing matrix size
+ni_list = (M/(dd+1)).astype(int) # ensures equal inducing matrix size
+
+for jj,ni in enumerate(ni_list):
 
   # write a pickle file with the run info
   run_params_dir = "./param_files/"
   if os.path.exists(run_params_dir) is False:
     os.mkdir(run_params_dir)
   run_params = {}
-  run_params['data_file']                    = "../../../uci/protein/protein.mat" # use relative import
-  run_params['mode']                         = "DSVGP" # DSVGP, SVGP
-  run_params['mll_type']                     = "PLL"
-  run_params['num_inducing']                 = ni
-  run_params['num_directions']               = dd
+
+  # select the dataset
+  #run_params['data_file']                    = "../../../uci/protein/protein.mat" # use relative import
+  #run_params['data_file']                    = "../../../uci/elevators/elevators.mat" # use relative import
+  #run_params['data_file']                    = "../../../uci/kin40k/kin40k.mat" # use relative import
+  #run_params['data_file']                    = "../../../uci/keggdirected/keggdirected.mat" 
+  run_params['data_file']                    = "../../../uci/energy/energy.mat" # use relative import
+  run_params['data_dir']                     = "./output/energy/" # save location for output
+
+  run_params['mode']                         = model[jj] # DSVGP, SVGP
+  run_params['mll_type']                     = mll[jj] # PLL or ELBO
+  run_params['num_inducing']                 = ni_list[jj] # number of inducing
+  run_params['num_directions']               = dd[jj] # number of directions
   run_params['minibatch_size']               = 512
-  run_params['num_epochs']                   = 1
+  run_params['num_epochs']                   = 700
   run_params['verbose']                      = True
   run_params['inducing_data_initialization'] = False
   run_params['use_ngd']                      = False
@@ -32,8 +43,8 @@ for ni in ni_list:
   run_params['num_contour_quadrature']       = 15 # gpytorch default=15
   run_params['learning_rate_hypers']         = 0.01
   run_params['learning_rate_ngd']            = 0.1
-  run_params['lr_sched']                     = None
-  run_params['lr_benchmarks']                = 0
+  run_params['lr_sched']                     = "MultiStepLR"
+  run_params['lr_benchmarks']                = 73*np.array([300,500])
   run_params['lr_gamma']                     = 0.1 # LR decrease rate
   # seed and date
   now     = datetime.now()

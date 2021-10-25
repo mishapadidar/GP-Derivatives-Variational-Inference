@@ -59,7 +59,8 @@ elif lr_sched == "LambdaLR":
 torch.random.manual_seed(seed)
 
 # output file names
-data_dir = "./output/"
+#data_dir = "./output/"
+data_dir = run_params['data_dir']
 model_filename = data_dir + "model_"+ base_name + ".model"
 data_filename  = data_dir + "data_" + base_name + ".pickle"
 if os.path.exists(data_dir) is False:
