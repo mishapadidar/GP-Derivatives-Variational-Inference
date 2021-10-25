@@ -10,9 +10,9 @@ from matplotlib import pyplot as plt
 import matplotlib
 import pylab
 
-data = pickle.load( open("./data/rover_plot_data.pickle", "rb" ) )
+data = pickle.load(open("./data/rover_plot_data_p3.pickle", "rb"))
 
-FONTSIZE=25
+FONTSIZE=20
 MARKERSIZE=20
 FIGURESUZE=(10,7)
 ALPHA=0.2
@@ -22,8 +22,9 @@ PADDING=0.1
 style_dict = {"TuRBO": ["TuRBO", "dashed", '#ff7f0e'],
               "TuRBO-DPPGPR1": ["TuRBO-DPPGPR1", "solid", '#1f77b4'],
               "TuRBO-DPPGPR2": ["TuRBO-DPPGPR2", "solid", '#d62728'],
+              "TuRBO-DPPGPR3": ["TuRBO-DPPGPR3", "solid", '#e377c2'],
               "BO-LCB": ["BO", "dashed", '#8c564b'],
-              "Random Search": ["Random", "dotted", "#e377c2"] }
+              "Random Search": ["Random", "dotted", "#7f7f7f"] }
 
 N_method = len(data['labels'])
 
