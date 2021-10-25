@@ -1,3 +1,0 @@
-WEC: wave energy converter total power output, 32 explanatory variables for X-Y positions, predict total powr output
-CASP: protein alignment, predict RMSE of distance between atoms in protein
-seoul bike data: predict how many bikes rented in a given day based on weather condition, humidity, etc.
