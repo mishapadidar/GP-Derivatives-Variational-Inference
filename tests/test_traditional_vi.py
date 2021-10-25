@@ -25,8 +25,8 @@ dim = 2
 num_inducing = 20
 minibatch_size = int(n/2)
 num_epochs = 400
-use_ciq = True
-use_ngd = True
+use_ciq = False
+use_ngd = False
 learning_rate_hypers=0.01
 learning_rate_ngd=0.1
 # lr-schedule
