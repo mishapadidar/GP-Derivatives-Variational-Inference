@@ -23,7 +23,7 @@ for ff in data_files:
   attrib['nd']  = d['num_directions']
   attrib['M']   = d['num_inducing']*(d['num_directions']+1)
   attrib['nll'] = d['test_nll'].item()
-  attrib['mse'] = d['test_mse'].item()
+  attrib['rmse'] = np.sqrt(d['test_mse'].item())
   attrib['test_time']  = d['test_time']
   attrib['train_time'] = d['train_time']
   if d['mode'] == 'SVGP' and d['mll_type'] == 'PLL':
@@ -44,6 +44,10 @@ df = pd.DataFrame.from_dict(data,orient='columns')
 #df = df[df['M'] > 400]
 print(df)
 pd.to_pickle(df,"./stellarator_plot_data.pickle")
+# compute means
+avgs = df.groupby(['run','M']).mean()
+print("\nMeans")
+print(avgs[['nll','rmse']])
 
 # plot
 rc = {'figure.figsize':(10,5),
@@ -57,6 +61,7 @@ plt.rcParams.update(rc)
 #sns.set_style("whitegrid")
 #sns.set_context("paper", font_scale=2.0)
 sns.lineplot(x='M',y='nll',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
+#sns.lineplot(x='M',y='rmse',hue='run',style='run',palette='colorblind',err_style='band',markers=True,dashes=False,linewidth=5,markersize=12,data=df)
 plt.title("NLL vs Inducing Matrix size")
 plt.ylabel("NLL")
 plt.xlabel("Inducing Matrix Size")

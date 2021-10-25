@@ -23,7 +23,7 @@ for ff in data_files:
     attrib['rmse'] = np.sqrt(d['test_mse'].item())
     print(f"ExactGradGP nll: {d['test_nll'].item()}, rmse: {np.sqrt(d['test_mse'].item())}")
     # dont plot ExactGradGP
-    # data.append(attrib)
+    data.append(attrib)
     continue
 
   attrib['ni']  = d['num_inducing']
